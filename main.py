@@ -33,9 +33,16 @@ def end_screen():
     pass
 
 
-def main():
-    pass
-
-
 if __name__ == '__main__':
-    main()
+    pygame.init()
+    WIDTH, HEIGHT = 800, 600
+    size = WIDTH, HEIGHT
+    screen = pygame.display.set_mode(size)
+    image_menu = load_image('Background\Menu.jpg')
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+        screen.blit(image_menu, (0, 0))
+        pygame.display.flip()
