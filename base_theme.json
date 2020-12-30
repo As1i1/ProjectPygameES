@@ -1,0 +1,28 @@
+ {
+     "button":
+     {
+         "font":
+         {
+             "name": "buttoner",
+             "size": "30",
+             "regular_path": "Data\\buttoner.otf",
+             "bold_italic_path": "Data\\buttoner.otf"
+         },
+         "images":
+         {
+             "normal_image": {
+                 "path": "Data\\Background\\city_background_night.png",
+                 "sub_surface_rect": "1694,300,170,40"
+             },
+             "hovered_image": {
+                 "path": "Data\\Background\\city_background_night.png",
+                 "sub_surface_rect": "4250,400,170,40"
+             }
+         },
+         "Misc":
+         {
+             "shape": "rounded_rectangle",
+             "shape_corner_radius": "5"
+         }
+     }
+ }

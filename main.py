@@ -1,6 +1,7 @@
 import pygame
 import os
 import sys
+import pygame_gui
 import math
 from copy import deepcopy
 import random
@@ -25,24 +26,93 @@ def terminate():
     sys.exit()
 
 
-def normal_exit():
-    """Нормальный выход из игры (с вызовом титров)"""
+def confirm_exit():
+    pygame_gui.windows.UIConfirmationDialog(
+        rect=pygame.Rect((250, 250), (500, 200)),
+        manager=UIManager,
+        window_title='Подтверждение',
+        action_long_desc='Вы действительно хотите таскать мешки с сахаром?',
+        action_short_name='Да!',
+        blocking=True
+    )
+
+
+def show_credits_and_exit():
+    """Показ титров с последуюзим выходом из игры"""
 
 
 def end_screen():
     pass
 
 
+def play_game():            # TODO Сделать игру:D
+    """Запуск игры (игрового цикла)"""
+
+
 if __name__ == '__main__':
+    # Инициализация
     pygame.init()
-    WIDTH, HEIGHT = 800, 600
-    size = WIDTH, HEIGHT
-    screen = pygame.display.set_mode(size)
-    image_menu = load_image('Background\Menu.jpg')
+    SIZE = WIDTH, HEIGHT = 800, 600
+    FPS = 60
+    screen = pygame.display.set_mode(SIZE)
+
+    pygame.display.set_caption('Everlasting Mario')
+    pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
+
+    # Создаём менеджер интерфейса с темой для красивого отображения элементов
+    UIManager = pygame_gui.UIManager(SIZE, 'base_theme.json')
+    # Создаём кнопки
+    start_game_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((500, 60), (170, 40)),
+        text='Начать игру',
+        manager=UIManager,
+    )
+    load_game_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((500, 110), (170, 40)),
+        text='Загрузить',
+        manager=UIManager
+    )
+    show_achievements_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((500, 160), (170, 40)),
+        text='Достижения',
+        manager=UIManager
+    )
+    exit_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((500, 210), (170, 40)),
+        text='Выйти',
+        manager=UIManager
+    )
+
+    # Фон меню
+    image_menu = load_image(r'Background\Menu.jpg')
+
     running = True
+
+    clock = pygame.time.Clock()
+
     while running:
+        time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                terminate()
+                confirm_exit()
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                    running = False
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == start_game_btn:
+                        play_game()
+                    if event.ui_element == load_game_btn:
+                        """Загружаем сохранения"""          # TODO сделать сохранения
+                    if event.ui_element == show_achievements_btn:
+                        """Показываем достижения"""         # TODO сделать ачивки
+                    if event.ui_element == exit_btn:
+                        confirm_exit()
+
+            UIManager.process_events(event)
+
+        UIManager.update(time_delta)
         screen.blit(image_menu, (0, 0))
+        UIManager.draw_ui(screen)
         pygame.display.flip()
+
+    terminate()
