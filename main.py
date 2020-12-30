@@ -21,6 +21,74 @@ def load_image(name, colorkey=None):
     return image
 
 
+def load_level(filename):
+    filename = "data/" + filename
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+
+
+class Asphalt(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(bound_group, all_sprites)
+        self.image = load_image('Background/Constructions/asphalt.png')
+        self.rect = self.image.get_rect().move(
+            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
+
+
+class Hero(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(all_sprites, hero_group)
+        self.image = load_image('Sprites\Semen\Walk (1) — копия.png')
+        print(self.image.get_height(), self.image.get_width())
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH - self.image.get_height() + 50,
+                                               pos_y * TILE_HEIGHT - self.image.get_width() + 50)
+
+    def update(self, *args, **kwargs):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            self.rect.x -= math.ceil(50 / FPS)
+        if keys[pygame.K_RIGHT]:
+            self.rect.x += math.ceil(50 / FPS)
+
+
+class BackGround(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(all_sprites)
+        self.image = load_image('Background\city_background_sunset — копия.png')
+        self.rect = self.image.get_rect().move(0, 0)
+
+
+def generate_level(level):
+    hero, pos_x, pos_y = None, None, None
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == 'a':
+                Asphalt(x, y)
+            if level[y][x] == 'H':
+                hero = Hero(x, y)
+                pos_x, pos_y = x, y
+    return hero, pos_x, pos_y
+
+
 def terminate():
     pygame.quit()
     sys.exit()
@@ -45,8 +113,30 @@ def end_screen():
     pass
 
 
-def play_game():            # TODO Сделать игру:D
+def play_game():            # TODO Сделать игру:D ага блять
     """Запуск игры (игрового цикла)"""
+    image_level_bg = load_image('Background\city_background_sunset — копия.png')
+#    camera = Camera() крч надо как-то камеру зауярить я хз как надо будет подумать
+    hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'))
+    screen.blit(image_level_bg, (0, 0))
+    running_game = True
+    while running_game:
+        for event_game in pygame.event.get():
+            if event_game.type == pygame.QUIT:
+                running_game = False
+
+        hero_group.update(event)
+#       camera.update(hero)
+        # обновляем положение всех спрайтов
+#       for sprite in all_sprites:
+#            camera.apply(sprite)
+
+        screen.fill((0, 0, 0))
+        screen.blit(image_level_bg, (0, 0))
+        all_sprites.draw(screen)
+        hero_group.draw(screen)
+        pygame.display.flip()
+    return
 
 
 if __name__ == '__main__':
@@ -58,6 +148,16 @@ if __name__ == '__main__':
 
     pygame.display.set_caption('Everlasting Mario')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
+
+    # Создание спарйт-групп
+    bound_group = pygame.sprite.Group()
+    hero_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    whero_group = pygame.sprite.Group()
+    all_sprites = pygame.sprite.Group()
+
+    # Константы для позиционирования объктов
+    TILE_WIDTH, TILE_HEIGHT = 50, 50
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
     UIManager = pygame_gui.UIManager(SIZE, 'base_theme.json')
