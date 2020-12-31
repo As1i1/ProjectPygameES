@@ -80,10 +80,10 @@ class Hero(pygame.sprite.Sprite):
 
 
 class BackGround(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, pos_x):
         super().__init__(all_sprites)
         self.image = load_image('Background\city_background_sunset — копия.png')
-        self.rect = self.image.get_rect().move(0, 0)
+        self.rect = self.image.get_rect().move(pos_x, 0)
 
 
 def generate_level(level):
@@ -122,10 +122,22 @@ def end_screen():
     pass
 
 
+def move_background(bg_first, bg_second):
+    """Перемещение заднего фона"""
+    if bg_first.rect.x < -4000:
+        bg_first.rect.x = bg_second.rect.x + 4000
+    if bg_second.rect.x < -4000:
+        bg_second.rect.x = bg_first.rect.x + 4000
+    if bg_first.rect.x > 4000:
+        bg_first.rect.x = bg_second.rect.x - 4000
+    if bg_second.rect.x > 4000:
+        bg_second.rect.x = bg_first.rect.x - 4000
+
+
 def play_game():            # TODO Сделать игру:D ага блять
     """Запуск игры (игрового цикла)"""
-    camera = Camera() # крч надо как-то камеру зауярить я хз как надо будет подумать
-    BackGround()
+    camera = Camera()
+    bg_first, bg_second = BackGround(-4000), BackGround(0)
     hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'))
     running_game = True
     while running_game:
@@ -138,6 +150,9 @@ def play_game():            # TODO Сделать игру:D ага блять
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
             camera.apply(sprite)
+
+        # Движение BackGround`а (бесконечный фон)
+        move_background(bg_first, bg_second)
 
         screen.fill((0, 0, 0))
         all_sprites.draw(screen)
