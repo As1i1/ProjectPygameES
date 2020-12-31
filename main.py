@@ -45,17 +45,17 @@ class Camera:
 
 
 class Asphalt(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(bound_group, all_sprites)
-        self.image = load_image('Background/Constructions/asphalt.png')
+    def __init__(self, pos_x, pos_y, *groups):
+        super().__init__(*groups)
+        self.image = load_image(r'Background/Constructions/asphalt.png')
         self.rect = self.image.get_rect().move(
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
 
 class Hero(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(all_sprites, hero_group)
-        self.image = load_image('Sprites\Semen\Walk (1) — копия.png')
+    def __init__(self, pos_x, pos_y, *groups):
+        super().__init__(*groups)
+        self.image = load_image(r'Sprites\Semen\Walk (1) — копия.png')
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH - self.image.get_height() // 2,
                                                pos_y * TILE_HEIGHT - self.image.get_width() // 2)
         self.lower_bound = 200
@@ -68,32 +68,29 @@ class Hero(pygame.sprite.Sprite):
             self.rect.x -= math.ceil(50 / FPS)
         if keys[pygame.K_RIGHT]:
             self.rect.x += math.ceil(50 / FPS)
+
         self.check_bounds()
 
     def check_bounds(self):
-        if self.rect.x > 600:
-            self.dx = 600 - self.rect.x
-        elif self.rect.x < 200:
-            self.dx = 200 - self.rect.x
-        else:
-            self.dx = 0
+        self.dx = max(min(self.upper_bound - self.rect.x, 0),
+                      max(self.lower_bound - self.rect.x, -1))
 
 
 class BackGround(pygame.sprite.Sprite):
-    def __init__(self, pos_x):
-        super().__init__(all_sprites)
-        self.image = load_image('Background\city_background_sunset — копия.png')
+    def __init__(self, pos_x, *groups):
+        super().__init__(*groups)
+        self.image = load_image(r'Background\city_background_sunset — копия.png')
         self.rect = self.image.get_rect().move(pos_x, 0)
 
 
-def generate_level(level):
+def generate_level(level, hero_groups, asphalt_groups):
     hero, pos_x, pos_y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
-                Asphalt(x, y)
+                Asphalt(x, y, *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(x, y)
+                hero = Hero(x, y, *hero_groups)
                 pos_x, pos_y = x, y
     return hero, pos_x, pos_y
 
@@ -115,7 +112,7 @@ def confirm_exit():
 
 
 def show_credits_and_exit():
-    """Показ титров с последуюзим выходом из игры"""
+    """Показ титров с последующим выходом из игры"""
 
 
 def end_screen():
@@ -124,25 +121,31 @@ def end_screen():
 
 def move_background(bg_first, bg_second):
     """Перемещение заднего фона"""
-    if bg_first.rect.x < -4000:
-        bg_first.rect.x = bg_second.rect.x + 4000
-    if bg_second.rect.x < -4000:
-        bg_second.rect.x = bg_first.rect.x + 4000
-    if bg_first.rect.x > 4000:
-        bg_first.rect.x = bg_second.rect.x - 4000
-    if bg_second.rect.x > 4000:
-        bg_second.rect.x = bg_first.rect.x - 4000
+    img_width = bg_first.rect.width
+    bg_first.rect.x %= -img_width
+    bg_second.rect.x %= img_width
 
 
-def play_game():            # TODO Сделать игру:D ага блять
+def play_game():            # TODO Сделать игру:D ага *****; за буквами следи
     """Запуск игры (игрового цикла)"""
+    # Создание спарйт-групп
+    bound_group = pygame.sprite.Group()
+    hero_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    whero_group = pygame.sprite.Group()
+    all_sprites = pygame.sprite.Group()
+
     camera = Camera()
-    bg_first, bg_second = BackGround(-4000), BackGround(0)
-    hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'))
+    bg_first, bg_second = BackGround(-4000, all_sprites), BackGround(0, all_sprites)
+    hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'),
+                                                  (all_sprites, hero_group),
+                                                  (bound_group, all_sprites))
+
     running_game = True
     while running_game:
         for event_game in pygame.event.get():
-            if event_game.type == pygame.QUIT:
+            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                  event_game.key == pygame.K_ESCAPE):
                 running_game = False
 
         hero_group.update(event)
@@ -158,6 +161,7 @@ def play_game():            # TODO Сделать игру:D ага блять
         all_sprites.draw(screen)
         hero_group.draw(screen)
         pygame.display.flip()
+
     return
 
 
@@ -170,13 +174,6 @@ if __name__ == '__main__':
 
     pygame.display.set_caption('Everlasting Mario')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
-
-    # Создание спарйт-групп
-    bound_group = pygame.sprite.Group()
-    hero_group = pygame.sprite.Group()
-    enemy_group = pygame.sprite.Group()
-    whero_group = pygame.sprite.Group()
-    all_sprites = pygame.sprite.Group()
 
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
