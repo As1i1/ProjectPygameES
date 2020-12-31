@@ -56,18 +56,51 @@ class Hero(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, *groups):
         super().__init__(*groups)
         self.image = load_image(r'Sprites\Semen\Walk (1) — копия.png')
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH - self.image.get_height() // 2,
-                                               pos_y * TILE_HEIGHT - self.image.get_width() // 2)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT - self.image.get_width() // 2)
         self.lower_bound = 200
         self.upper_bound = 600
+        self.vx = 50
+        self.vy = 10
+        self.ay = 0
         self.dx = 0
 
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
+
+        # Проверка на пересечение
+        bounds1 = pygame.sprite.spritecollide(self, bound_group, False)
+        bounds = []
+        for sprite in bounds1:
+            if sprite is None:
+                continue
+            coord = pygame.sprite.collide_mask(sprite, self)
+            if coord:
+                bounds.append((sprite, *coord))
+        if not bounds and self.ay == 0:
+            self.vy = 10
+            self.rect.y += math.ceil(self.vy / FPS)
+        else:
+            self.vy = 0
+
         if keys[pygame.K_LEFT]:
-            self.rect.x -= math.ceil(50 / FPS)
+            flag = True
+            for sprite, x, y in bounds:
+                if y != 0 and sprite.rect.x <= self.rect.x:
+                    flag = False
+                    break
+            if flag:
+                self.rect.x -= math.ceil(self.vx / FPS)
         if keys[pygame.K_RIGHT]:
-            self.rect.x += math.ceil(50 / FPS)
+            flag = True
+            for sprite, x, y in bounds:
+                if y != 0 and sprite.rect.x >= self.rect.x:
+                    flag = False
+                    break
+            if flag:
+                self.rect.x += math.ceil(self.vx / FPS)
+        if keys[pygame.K_UP]:
+            # TODO Завтра сделать прыжок
+            pass
 
         self.check_bounds()
 
@@ -126,14 +159,9 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
-def play_game():            # TODO Сделать игру:D ага *****; за буквами следи
+def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
+    # TODO Пацагы меня не хватит мне срочно нужен супермаркет. Мое сердечко так страдает. Мне нужен супермаркет. Вита, Виталиночка.
     """Запуск игры (игрового цикла)"""
-    # Создание спарйт-групп
-    bound_group = pygame.sprite.Group()
-    hero_group = pygame.sprite.Group()
-    enemy_group = pygame.sprite.Group()
-    whero_group = pygame.sprite.Group()
-    all_sprites = pygame.sprite.Group()
 
     camera = Camera()
     bg_first, bg_second = BackGround(-4000, all_sprites), BackGround(0, all_sprites)
@@ -219,6 +247,13 @@ if __name__ == '__main__':
                     running = False
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == start_game_btn:
+                        # Создание спарйт-групп
+                        bound_group = pygame.sprite.Group()
+                        hero_group = pygame.sprite.Group()
+                        enemy_group = pygame.sprite.Group()
+                        whero_group = pygame.sprite.Group()
+                        all_sprites = pygame.sprite.Group()
+
                         play_game()
                     if event.ui_element == load_game_btn:
                         """Загружаем сохранения"""          # TODO сделать сохранения
