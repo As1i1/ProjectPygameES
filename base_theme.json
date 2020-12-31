@@ -1,28 +1,64 @@
  {
      "button":
      {
+         "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#9c00ff",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
          "font":
          {
-             "name": "buttoner",
-             "size": "30",
-             "regular_path": "Data\\buttoner.otf",
-             "bold_italic_path": "Data\\buttoner.otf"
-         },
-         "images":
-         {
-             "normal_image": {
-                 "path": "Data\\Background\\city_background_night.png",
-                 "sub_surface_rect": "1694,300,170,40"
-             },
-             "hovered_image": {
-                 "path": "Data\\Background\\city_background_night.png",
-                 "sub_surface_rect": "4250,400,170,40"
-             }
+             "name": "bolder",
+             "size": "60",
+             "regular_path": "Data\\Third_font.ttf",
+             "bold_italic_path": "Data\\Third_font.ttf"
          },
          "Misc":
          {
-             "shape": "rounded_rectangle",
+             "shape": "ellipse",
              "shape_corner_radius": "5"
          }
+     },
+     "#confirmation_dialog.#cancel_button":
+     {
+         "font":
+         {
+             "name": "bolder",
+             "size": "30",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#confirmation_dialog.#confirm_button":
+     {
+         "font":
+         {
+             "name": "bolder",
+             "size": "30",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#confirmation_dialog.text_box":
+     {
+         "font": {
+             "name": "bolder",
+             "size": "25",
+             "regular_path": "Data\\Second_font.ttf"
+         }
+     },
+     "window.#title_bar":
+     {
+         "font": {
+             "name": "bolder",
+             "size": "30",
+             "regular_path": "Data\\Third_font.ttf"
+         }
      }
+
  }
