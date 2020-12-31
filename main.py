@@ -33,17 +33,15 @@ class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
         self.dx = 0
-        self.dy = 0
 
     # сдвинуть объект obj на смещение камеры
     def apply(self, obj):
         obj.rect.x += self.dx
-        obj.rect.y += self.dy
 
     # позиционировать камеру на объекте target
     def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+        self.dx = target.dx
+        target.dx = 0
 
 
 class Asphalt(pygame.sprite.Sprite):
@@ -58,9 +56,11 @@ class Hero(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(all_sprites, hero_group)
         self.image = load_image('Sprites\Semen\Walk (1) — копия.png')
-        print(self.image.get_height(), self.image.get_width())
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH - self.image.get_height() + 50,
-                                               pos_y * TILE_HEIGHT - self.image.get_width() + 50)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH - self.image.get_height() // 2,
+                                               pos_y * TILE_HEIGHT - self.image.get_width() // 2)
+        self.lower_bound = 200
+        self.upper_bound = 600
+        self.dx = 0
 
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
@@ -68,6 +68,15 @@ class Hero(pygame.sprite.Sprite):
             self.rect.x -= math.ceil(50 / FPS)
         if keys[pygame.K_RIGHT]:
             self.rect.x += math.ceil(50 / FPS)
+        self.check_bounds()
+
+    def check_bounds(self):
+        if self.rect.x > 600:
+            self.dx = 600 - self.rect.x
+        elif self.rect.x < 200:
+            self.dx = 200 - self.rect.x
+        else:
+            self.dx = 0
 
 
 class BackGround(pygame.sprite.Sprite):
@@ -115,10 +124,9 @@ def end_screen():
 
 def play_game():            # TODO Сделать игру:D ага блять
     """Запуск игры (игрового цикла)"""
-    image_level_bg = load_image('Background\city_background_sunset — копия.png')
-#    camera = Camera() крч надо как-то камеру зауярить я хз как надо будет подумать
+    camera = Camera() # крч надо как-то камеру зауярить я хз как надо будет подумать
+    BackGround()
     hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'))
-    screen.blit(image_level_bg, (0, 0))
     running_game = True
     while running_game:
         for event_game in pygame.event.get():
@@ -126,13 +134,12 @@ def play_game():            # TODO Сделать игру:D ага блять
                 running_game = False
 
         hero_group.update(event)
-#       camera.update(hero)
+        camera.update(hero)
         # обновляем положение всех спрайтов
-#       for sprite in all_sprites:
-#            camera.apply(sprite)
+        for sprite in all_sprites:
+            camera.apply(sprite)
 
         screen.fill((0, 0, 0))
-        screen.blit(image_level_bg, (0, 0))
         all_sprites.draw(screen)
         hero_group.draw(screen)
         pygame.display.flip()
