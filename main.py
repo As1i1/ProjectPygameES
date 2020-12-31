@@ -49,12 +49,52 @@ def play_game():            # TODO Сделать игру:D
     """Запуск игры (игрового цикла)"""
 
 
+def show_achievements_storage():
+    bg = load_image(r'Background/Achievements.jpg')
+    screen.blit(bg, (0, 0))
+
+    img_coords = [
+        (119, 98)
+    ]
+    text_coords = [
+        (95, 189)
+    ]
+
+    # Перебираем и отрисовываем достижения
+    for i, achievement in enumerate(achievements):
+        if achievement[3]:
+            text = load_image(f'Achievements/{achievement[1]}')
+            img = load_image(f'Achievements/{achievement[0]}')
+        else:
+            text = load_image(f'Achievements/{achievement[2]}')
+            img = load_image('Achievements/Unopened_achievement.png')
+
+        screen.blit(img, img_coords[i])
+        screen.blit(text, text_coords[i])
+
+    running_achievements = True
+
+    while running_achievements:
+        for event_achievement in pygame.event.get():
+            if event_achievement.type == pygame.QUIT or (event_achievement.type == pygame.KEYDOWN and
+                                                         event_achievement.key == pygame.K_ESCAPE):
+                running_achievements = False
+
+        pygame.display.flip()
+
+    return
+
+
 if __name__ == '__main__':
     # Инициализация
     pygame.init()
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
     screen = pygame.display.set_mode(SIZE)
+
+    # Список достижений [(имя изображения, имя открытой напдиси, имя закрытой надписи,
+    #                                                            получено/не получено)]
+    achievements = [('test_img.png', 'test_font_opened.png', 'test_font_unopened.png', True)] * 8
 
     pygame.display.set_caption('Everlasting Mario')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
@@ -118,7 +158,7 @@ if __name__ == '__main__':
                     if event.ui_element == load_game_btn:
                         """Загружаем сохранения"""          # TODO сделать сохранения
                     if event.ui_element == show_achievements_btn:
-                        """Показываем достижения"""         # TODO сделать ачивки
+                        show_achievements_storage()
                     if event.ui_element == exit_btn:
                         confirm_exit()
 
