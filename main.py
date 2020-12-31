@@ -38,7 +38,7 @@ def confirm_exit():
 
 
 def show_credits_and_exit():
-    """Показ титров с последуюзим выходом из игры"""
+    """Показ титров с последующим выходом из игры"""
 
 
 def end_screen():
@@ -63,28 +63,28 @@ if __name__ == '__main__':
     UIManager = pygame_gui.UIManager(SIZE, 'base_theme.json')
     # Создаём кнопки
     start_game_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.rect.Rect((500, 60), (170, 40)),
+        relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
         text='Начать игру',
         manager=UIManager,
     )
     load_game_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.rect.Rect((500, 110), (170, 40)),
+        relative_rect=pygame.rect.Rect((46, 153), (300, 60)),
         text='Загрузить',
         manager=UIManager
     )
     show_achievements_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.rect.Rect((500, 160), (170, 40)),
+        relative_rect=pygame.rect.Rect((46, 253), (300, 60)),
         text='Достижения',
         manager=UIManager
     )
     exit_btn = pygame_gui.elements.UIButton(
-        relative_rect=pygame.rect.Rect((500, 210), (170, 40)),
+        relative_rect=pygame.rect.Rect((46, 353), (300, 60)),
         text='Выйти',
         manager=UIManager
     )
 
     # Фон меню
-    image_menu = load_image(r'Background\Menu.jpg')
+    image_menu = load_image(r'Background\Menu_normal.jpg')
 
     running = True
 
@@ -98,6 +98,20 @@ if __name__ == '__main__':
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     running = False
+
+                # Изменяем фон в зависимости он наведённости на одну из кнопок
+                if event.user_type == pygame_gui.UI_BUTTON_ON_UNHOVERED:
+                    image_menu = load_image(r'Background\Menu_normal.jpg')
+                if event.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
+                    if event.ui_element == start_game_btn:
+                        image_menu = load_image(r'Background\Menu_play.jpg')
+                    if event.ui_element == load_game_btn:
+                        image_menu = load_image(r'Background\Menu_surprised.jpg')
+                    if event.ui_element == show_achievements_btn:
+                        image_menu = load_image(r'Background\Menu_embarrassed.jpg')
+                    if event.ui_element == exit_btn:
+                        image_menu = load_image(r'Background\Menu_angry.jpg')
+
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == start_game_btn:
                         play_game()
