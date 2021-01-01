@@ -54,10 +54,14 @@ def show_achievements_storage():
     screen.blit(bg, (0, 0))
 
     img_coords = [
-        (119, 98)
+        (119, 98), (398, 98), (654, 98),
+        (258, 215), (548, 215),
+        (145, 359), (398, 359), (651, 359)
     ]
     text_coords = [
-        (95, 189)
+        (92, 189), (369, 189), (625, 189),
+        (228, 307), (517, 307),
+        (115, 451), (368, 451), (622, 451)
     ]
 
     # Перебираем и отрисовываем достижения
@@ -94,7 +98,7 @@ if __name__ == '__main__':
 
     # Список достижений [(имя изображения, имя открытой напдиси, имя закрытой надписи,
     #                                                            получено/не получено)]
-    achievements = [('test_img.png', 'test_font_opened.png', 'test_font_unopened.png', True)] * 8
+    achievements = [('test_img.png', 'test_font_opened.png', 'test_font_unopened.png', False)] * 8
 
     pygame.display.set_caption('Everlasting Mario')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
