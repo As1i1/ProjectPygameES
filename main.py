@@ -60,8 +60,7 @@ class Hero(pygame.sprite.Sprite):
         self.lower_bound = 200
         self.upper_bound = 600
         self.vx = 50
-        self.vy = 10
-        self.ay = 0
+        self.vy = 0
         self.dx = 0
 
     def update(self, *args, **kwargs):
@@ -69,38 +68,63 @@ class Hero(pygame.sprite.Sprite):
 
         # Проверка на пересечение
         bounds1 = pygame.sprite.spritecollide(self, bound_group, False)
+
+        # Отбор спрайтов которые пересекаются по маске
         bounds = []
         for sprite in bounds1:
             if sprite is None:
                 continue
             coord = pygame.sprite.collide_mask(sprite, self)
             if coord:
+                print(*coord)
                 bounds.append((sprite, *coord))
-        if not bounds and self.ay == 0:
-            self.vy = 10
-            self.rect.y += math.ceil(self.vy / FPS)
-        else:
-            self.vy = 0
+        print()
 
-        if keys[pygame.K_LEFT]:
-            flag = True
-            for sprite, x, y in bounds:
-                if y != 0 and sprite.rect.x <= self.rect.x:
-                    flag = False
-                    break
-            if flag:
-                self.rect.x -= math.ceil(self.vx / FPS)
+        # Проверка куда можно пойти
+        GoLeft, GoRight, GoUp, GoDown = True, True, True, True
+        x2, y2, w2, h2 = self.rect.x, self.rect.y, self.rect.w, self.rect.h
+        for sprite, x, y in bounds:
+            x1, y1, w1, h1 = sprite.rect.x, sprite.rect.y, sprite.rect.w, sprite.rect.h
+            if y1 + h1 >= y2 > y1 and (min(x1, x2) <= max(x1, x2) <= min(x1 + w1, x2 + w2) or
+                                       max(x1, x2) <= min(x1 + w1, x2 + w2) <= max(x1 + w1, x2 + w2)) and \
+                    (x != 0 and x != TILE_WIDTH - 1):
+                GoUp = False
+            if y2 + h2 >= y1 > y2 and (min(x1, x2) <= max(x1, x2) <= min(x1 + w1, x2 + w2) or
+                                       max(x1, x2) <= min(x1 + w1, x2 + w2) <= max(x1 + w1, x2 + w2)) and \
+                    (x != 0 and x != TILE_WIDTH - 1):
+                GoDown = False
+            if x2 + w2 >= x1 > x2 and (min(y1, y2) <= max(y1, y2) <= min(y1 + h1, y2 + h2) or
+                                       max(y1, y2) <= min(y1 + h1, y2 + h2) <= max(y1 + h1, y2 + h2)) and \
+                    (y != 0 and y != TILE_HEIGHT - 1):
+                GoRight = False
+            if x1 + w1 >= x2 > x1 and (min(y1, y2) <= max(y1, y2) <= min(y1 + h1, y2 + h2) or
+                                       max(y1, y2) <= min(y1 + h1, y2 + h2) <= max(y1 + h1, y2 + h2)) and \
+                    (y != 0 and y != TILE_HEIGHT - 1):
+                GoLeft = False
+
+        # Передвижение
         if keys[pygame.K_RIGHT]:
-            flag = True
-            for sprite, x, y in bounds:
-                if y != 0 and sprite.rect.x >= self.rect.x:
-                    flag = False
-                    break
-            if flag:
+            if GoRight:
                 self.rect.x += math.ceil(self.vx / FPS)
+        if keys[pygame.K_LEFT]:
+            if GoLeft:
+                self.rect.x -= math.ceil(self.vx / FPS)
         if keys[pygame.K_UP]:
-            # TODO Завтра сделать прыжок
-            pass
+            if not GoDown:
+                self.vy = 150
+
+        if self.vy > 0:
+            if not GoUp:
+                self.vy = 0
+            else:
+                self.rect.y -= math.ceil(self.vy / FPS)
+                self.vy -= 1
+
+        if GoDown and self.vy <= 0:
+            self.vy = -10
+            self.rect.y += math.ceil(abs(self.vy) / FPS)
+        elif not GoDown and self.vy == -10:
+            self.vy = 0
 
         self.check_bounds()
 
@@ -159,7 +183,7 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
-def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
+def play_game():  # TODO Сделать игру:D ага *****; за буквами следи;
     # TODO Пацагы меня не хватит мне срочно нужен супермаркет. Мое сердечко так страдает. Мне нужен супермаркет. Вита, Виталиночка.
     """Запуск игры (игрового цикла)"""
 
@@ -241,7 +265,8 @@ if __name__ == '__main__':
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                confirm_exit()
+                terminate()  # Временно
+            #                confirm_exit()
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     running = False
@@ -256,9 +281,9 @@ if __name__ == '__main__':
 
                         play_game()
                     if event.ui_element == load_game_btn:
-                        """Загружаем сохранения"""          # TODO сделать сохранения
+                        """Загружаем сохранения"""  # TODO сделать сохранения
                     if event.ui_element == show_achievements_btn:
-                        """Показываем достижения"""         # TODO сделать ачивки
+                        """Показываем достижения"""  # TODO сделать ачивки
                     if event.ui_element == exit_btn:
                         confirm_exit()
 
