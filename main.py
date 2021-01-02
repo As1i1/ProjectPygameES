@@ -50,16 +50,14 @@ class Asphalt(pygame.sprite.Sprite):
         self.image = load_image(r'Background/Constructions/asphalt.png')
         self.rect = self.image.get_rect().move(
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
 
 
 class Hero(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, *groups):
         super().__init__(*groups)
-        self.image = load_image(r'Sprites\Semen\Walk (1) — копия.png')
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT - self.image.get_width() // 2)
-        self.mask = pygame.mask.from_surface(self.image)
-        self.rect.w, self.rect.h = self.mask.get_bounding_rects()[0].w + 2, self.mask.get_bounding_rects()[0].h + 2
+        self.image = load_image(r'Sprites\Semen\Walk (1).png')
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
+                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
 
         self.lower_bound = 200
         self.upper_bound = 600
@@ -76,16 +74,16 @@ class Hero(pygame.sprite.Sprite):
 
         # Если идёт "анимация" прыжка
         if self.jump_timer != 0:
+            cant_jump = True
             # Если мы ни во что не упираемся сверху
-            if not pygame.sprite.spritecollideany(self, bound_group):
+            if 2 not in self.collide_asphalt():
                 self.rect.y -= math.ceil(self.vy / FPS)
                 self.jump_timer -= 1
-                cant_jump = True
             else:
                 self.jump_timer = 0
 
-        # Если персонаж не пересекается с асфальтом, значит он падает
-        elif not self.collide_mask_asphalt():
+        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
+        elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
             self.rect.y += math.ceil(self.vy / FPS)
             cant_jump = True
 
@@ -97,26 +95,30 @@ class Hero(pygame.sprite.Sprite):
         if keys[pygame.K_UP] and not cant_jump:
             self.jump_timer = 150
 
-        # Проверим на пересечение
-        for collide in pygame.sprite.spritecollide(self, bound_group, False):
-            # Если мы мы ударились во что-то сверху, то ничего не делаем
-            if collide.rect.y + collide.rect.h <= self.rect.y + 1:
-                continue
-            # Иначе, "вытолкнем" персонажа влево или вправо, в зависимости от его положения
-            elif self.rect.x > collide.rect.x:
-                self.rect.x = collide.rect.x + collide.rect.w
-                return
-            else:
-                self.rect.x = collide.rect.x - self.rect.w
-                return
+        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
+        # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
+        if 1 in (collide := self.collide_asphalt()):
+            self.rect.x = collide[1]
 
         self.check_bounds()
 
-    def collide_mask_asphalt(self):
-        for sprite in bound_group:
-            if pygame.sprite.collide_mask(self, sprite):
-                return True
-        return False
+    def collide_asphalt(self):
+        """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
+            0, если персонаж пересекается с асфальтом снизу,
+            1, если пересекается с асфальтом справа или слева,
+            2, если пересекается с асфальтом сверху"""
+
+        res = {}
+        for collide in pygame.sprite.spritecollide(self, bound_group, False):
+            if abs(collide.rect.y - self.rect.y - self.rect.h) <= 2:
+                res[0] = True
+            elif abs(collide.rect.y + collide.rect.h - self.rect.y) <= 2:
+                res[2] = True
+            elif collide.rect.x + collide.rect.w < self.rect.x + self.rect.w:
+                res[1] = collide.rect.x + collide.rect.w
+            elif collide.rect.x > self.rect.x:
+                res[1] = collide.rect.x - self.rect.w
+        return res
 
     def check_bounds(self):
         self.dx = max(min(self.upper_bound - self.rect.x, 0),
