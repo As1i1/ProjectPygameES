@@ -66,6 +66,7 @@ class Hero(pygame.sprite.Sprite):
         self.dx = 0
 
         self.jump_vy = 0
+        self.jump_timer = 0
 
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
@@ -73,14 +74,17 @@ class Hero(pygame.sprite.Sprite):
         cant_jump = False   # Что бы нельзя было прыгать в воздухе
 
         # Если идёт "анимация" прыжка
-        if self.jump_vy != 0:
+        if self.jump_timer != 0:
             cant_jump = True
             # Если мы ни во что не упираемся сверху
             if 2 not in self.collide_asphalt():
-                self.rect.y -= math.ceil(self.jump_vy / FPS)
-                self.jump_vy -= 1
+                if self.jump_timer % 3 == 0:
+                    self.rect.y -= math.ceil(self.jump_vy / FPS)
+                    self.jump_vy -= 1
+                self.jump_timer -= 1
             else:
                 self.jump_vy = 0
+                self.jump_timer = 0
 
         # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
         elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
@@ -89,13 +93,14 @@ class Hero(pygame.sprite.Sprite):
 
         # Перемещаем персонажа
         if keys[pygame.K_RIGHT]:
-            if (cant_jump and self.jump_vy % 2 == 0) or not cant_jump:
+            if (self.jump_timer % 2 == 0 and cant_jump) or not cant_jump:
                 self.rect.x += math.ceil(self.vx / FPS)
         if keys[pygame.K_LEFT]:
-            if (cant_jump and self.jump_vy % 2 == 0) or not cant_jump:
+            if (self.jump_timer % 2 == 0 and cant_jump) or not cant_jump:
                 self.rect.x -= math.ceil(self.vx / FPS)
         if keys[pygame.K_UP] and not cant_jump:
             self.jump_vy = 125
+            self.jump_timer = 2 * self.jump_vy
 
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
