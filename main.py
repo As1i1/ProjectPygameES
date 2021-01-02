@@ -81,7 +81,7 @@ class Hero(pygame.sprite.Sprite):
             cant_jump = True
             # Если мы ни во что не упираемся сверху
             if 2 not in self.collide_asphalt():
-                if self.jump_timer % 3 == 0:
+                if self.jump_timer % 3 < 2:
                     self.rect.y -= math.ceil(self.jump_vy / FPS)
                     self.jump_vy -= 1
                 self.jump_timer -= 1
@@ -92,23 +92,23 @@ class Hero(pygame.sprite.Sprite):
         # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
         elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
             if self.down_timer == 0:
-                self.down_vy = 125
+                self.down_vy = 1
                 self.down_timer = 2 * self.down_vy
-            if self.down_timer % 3 == 0:
+            if self.down_timer % 3 < 2:
                 self.rect.y += math.ceil(self.down_vy / FPS)
-                self.down_vy -= 1
+                self.down_vy += 1
             self.down_timer -= 1
             cant_fall = True
 
         # Перемещаем персонажа
         if keys[pygame.K_RIGHT]:
-            if (self.jump_timer % 2 == 0 and cant_jump) or (self.down_timer % 2 == 0 and cant_fall) or \
-                    (not cant_jump and not cant_fall and self.vx_timer % 2 < 2):
+            if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
+                    (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
                 self.rect.x += math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_LEFT]:
-            if (self.jump_timer % 2 == 0 and cant_jump) or (self.down_timer % 2 == 0 and cant_fall) or \
-                    (not cant_jump and not cant_fall and self.vx_timer % 2 < 2):
+            if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
+                    (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
                 self.rect.x -= math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_UP] and not cant_jump and not cant_fall:
