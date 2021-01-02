@@ -93,7 +93,7 @@ class Hero(pygame.sprite.Sprite):
         elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
             if self.down_timer == 0:
                 self.down_vy = 1
-                self.down_timer = 2 * self.down_vy
+                self.down_timer = 2 * 125
             if self.down_timer % 3 < 2:
                 self.rect.y += math.ceil(self.down_vy / FPS)
                 self.down_vy += 1
