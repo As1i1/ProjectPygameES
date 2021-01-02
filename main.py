@@ -74,7 +74,7 @@ class Hero(pygame.sprite.Sprite):
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
 
-        cant_jump = False   # Что бы нельзя было прыгать в воздухе
+        cant_jump, cant_fall = False, False   # Что бы нельзя было прыгать в воздухе
 
         # Если идёт "анимация" прыжка
         if self.jump_timer != 0:
@@ -98,18 +98,20 @@ class Hero(pygame.sprite.Sprite):
                 self.rect.y += math.ceil(self.down_vy / FPS)
                 self.down_vy -= 1
             self.down_timer -= 1
-            cant_jump = True
+            cant_fall = True
 
         # Перемещаем персонажа
         if keys[pygame.K_RIGHT]:
-            if (self.jump_timer % 2 == 0 and cant_jump) or (not cant_jump and self.vx_timer % 2 < 2):
+            if (self.jump_timer % 2 == 0 and cant_jump) or (self.down_timer % 2 == 0 and cant_fall) or \
+                    (not cant_jump and not cant_fall and self.vx_timer % 2 < 2):
                 self.rect.x += math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_LEFT]:
-            if (self.jump_timer % 2 == 0 and cant_jump) or (not cant_jump and self.vx_timer % 2 < 2):
+            if (self.jump_timer % 2 == 0 and cant_jump) or (self.down_timer % 2 == 0 and cant_fall) or \
+                    (not cant_jump and not cant_fall and self.vx_timer % 2 < 2):
                 self.rect.x -= math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_UP] and not cant_jump:
+        if keys[pygame.K_UP] and not cant_jump and not cant_fall:
             self.jump_vy = 125
             self.jump_timer = 2 * self.jump_vy
 
