@@ -74,11 +74,11 @@ class Hero(pygame.sprite.Sprite):
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
 
-        cant_jump, cant_fall = False, False   # Что бы нельзя было прыгать в воздухе
+        in_jump, in_fall = False, False   # Что бы нельзя было прыгать в воздухе
 
         # Если идёт "анимация" прыжка
         if self.jump_timer != 0:
-            cant_jump = True
+            in_jump = True
             # Если мы ни во что не упираемся сверху
             if 2 not in self.collide_asphalt():
                 if self.jump_timer % 3 < 2:
@@ -93,27 +93,31 @@ class Hero(pygame.sprite.Sprite):
         elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
             if self.down_timer == 0:
                 self.down_vy = 1
-                self.down_timer = 125
+                self.down_timer = 600
             if self.down_timer % 3 < 2:
                 self.rect.y += math.ceil(self.down_vy / FPS)
                 self.down_vy += 1
             self.down_timer -= 1
-            cant_fall = True
+            in_fall = True
+        else:
+            self.down_timer = 0
+            self.down_vy = 0
+            in_fall = False
 
         # Перемещаем персонажа
         if keys[pygame.K_RIGHT]:
-            if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
-                    (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
+                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.rect.x += math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_LEFT]:
-            if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
-                    (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
+                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.rect.x -= math.ceil(self.vx / FPS)
             self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_UP] and not cant_jump and not cant_fall:
+        if keys[pygame.K_UP] and not in_jump and not in_fall:
             self.jump_vy = 125
-            self.jump_timer = 2 * self.jump_vy
+            self.jump_timer = 250
 
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
@@ -130,9 +134,9 @@ class Hero(pygame.sprite.Sprite):
 
         res = {}
         for collide in pygame.sprite.spritecollide(self, bound_group, False):
-            if abs(collide.rect.y - self.rect.y - self.rect.h) <= 2:
+            if abs(collide.rect.y - self.rect.y - self.rect.h) <= 5:
                 res[0] = True
-            elif abs(collide.rect.y + collide.rect.h - self.rect.y) <= 2:
+            elif abs(collide.rect.y + collide.rect.h - self.rect.y) <= 5:
                 res[2] = True
             elif collide.rect.x + collide.rect.w < self.rect.x + self.rect.w:
                 res[1] = collide.rect.x + collide.rect.w
@@ -195,8 +199,7 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
-def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
-    # TODO Пацагы меня не хватит мне срочно нужен супермаркет. Мое сердечко так страдает. Мне нужен супермаркет. Вита, Виталиночка.
+def play_game():            # TODO Сделать игру:D ага *****; за буквами следи
     """Запуск игры (игрового цикла)"""
 
     camera = Camera()

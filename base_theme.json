@@ -22,8 +22,7 @@
          },
          "Misc":
          {
-             "shape": "ellipse",
-             "shape_corner_radius": "5"
+             "shadow_width": "0"
          }
      },
      "#confirmation_dialog.#cancel_button":
