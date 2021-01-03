@@ -1,4 +1,97 @@
  {
+     "tool_btn":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#E0FFFF",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
+         "font":
+         {
+             "name": "standart",
+             "size": "40",
+             "regular_path": "Data\\Normal.ttf",
+             "bold_italic_path": "Data\\Third_font.ttf"
+         }
+     },
+     "clicked_page_btn":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#DA70D6",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
+         "font":
+         {
+             "name": "standart",
+             "size": "30",
+             "regular_path": "Data\\Normal.ttf",
+             "bold_italic_path": "Data\\Third_font.ttf"
+         }
+     },
+     "page_btn":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#E0FFFF",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
+         "font":
+         {
+             "name": "standart",
+             "size": "30",
+             "regular_path": "Data\\Normal.ttf",
+             "bold_italic_path": "Data\\Third_font.ttf"
+         }
+     },
+     "saved_image_btn":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#E0FFFF",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
+         "font":
+         {
+             "name": "standart",
+             "size": "15",
+             "regular_path": "Data\\Normal.ttf",
+             "bold_italic_path": "Data\\Third_font.ttf"
+         },
+         "misc":
+         {
+             "text_horiz_alignment": "left",
+             "text_vert_alignment": "top"
+         }
+     },
      "button":
      {
          "colours":
@@ -19,10 +112,6 @@
              "size": "60",
              "regular_path": "Data\\Third_font.ttf",
              "bold_italic_path": "Data\\Third_font.ttf"
-         },
-         "Misc":
-         {
-             "shadow_width": "0"
          }
      },
      "#confirmation_dialog.#cancel_button":
