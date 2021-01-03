@@ -29,6 +29,41 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, *groups):
+        super().__init__(*groups)
+        self.cnt_frames = 0
+        self.frames_lefts = []
+        self.frames_rights = []
+        self.timer = 50
+        self.cut_sheet(sheet, columns, rows)
+        self.is_rotate = False
+        self.cur_frame = 0
+        self.image = self.frames_rights[self.cur_frame]
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames_rights.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+                self.frames_lefts.append(pygame.transform.flip(self.frames_rights[-1], True, False))
+        self.cnt_frames = len(self.frames_lefts)
+
+    def update(self, *args, **kwargs):
+        if self.timer == 0:
+            self.cur_frame = (self.cur_frame + 1) % self.cnt_frames
+            if self.is_rotate:
+                self.image = self.frames_lefts[self.cur_frame]
+            else:
+                self.image = self.frames_rights[self.cur_frame]
+            self.timer = 25
+        else:
+            self.timer -= 1
+
+
 class Camera:
     # зададим начальный сдвиг камеры
     def __init__(self):
@@ -52,10 +87,9 @@ class Asphalt(pygame.sprite.Sprite):
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
 
-class Hero(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, *groups):
-        super().__init__(*groups)
-        self.image = load_image(r'Sprites\Semen\Walk (1).png')
+class Hero(AnimatedSprite):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, *groups)
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
                                                pos_y * TILE_HEIGHT - self.image.get_height() // 2)
 
@@ -74,6 +108,7 @@ class Hero(pygame.sprite.Sprite):
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
 
+        motion = False  # Двигался ли герой
         cant_jump, cant_fall = False, False   # Что бы нельзя было прыгать в воздухе
 
         # Если идёт "анимация" прыжка
@@ -104,16 +139,29 @@ class Hero(pygame.sprite.Sprite):
         if keys[pygame.K_RIGHT]:
             if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
                     (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+                if not cant_jump and not cant_fall:
+                    self.is_rotate = False
+                    super().update(event)
                 self.rect.x += math.ceil(self.vx / FPS)
+                motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_LEFT]:
             if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
                     (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+                if not cant_jump and not cant_fall:
+                    self.is_rotate = True
+                    super().update(event)
                 self.rect.x -= math.ceil(self.vx / FPS)
+                motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
         if keys[pygame.K_UP] and not cant_jump and not cant_fall:
+            motion = True
             self.jump_vy = 125
             self.jump_timer = 2 * self.jump_vy
+
+        if not motion and self.cur_frame != 0:
+             super().update(event)
+
 
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
@@ -159,7 +207,7 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'a':
                 Asphalt(x, y, *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(x, y, *hero_groups)
+                hero = Hero(load_image("Sprites\Semen\Semen-test2.png"), 4, 1, x, y, *hero_groups)
                 pos_x, pos_y = x, y
     return hero, pos_x, pos_y
 
