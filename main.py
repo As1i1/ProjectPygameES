@@ -292,7 +292,7 @@ def show_achievements_storage():
 
 def check_saves(page):
     """Вспомогательная функция для экрана с сохранениями, которая возвращает список 9
-       булевских значений, каждый из которых True, если соответствующее сохранения на заданной
+       булевских значений, каждый из которых True, если соответствующее сохранение на заданной
        странице page существует"""
 
     return [os.path.isdir(f'Saves/{page}/{cell}') for cell in range(1, 10)]
@@ -362,7 +362,7 @@ def show_load_screen():
 
             if event_load.type == pygame.USEREVENT:
                 # Удаление подтверждено - удаляем сохранение, перезагружаем все кнопки и
-                #                                               сбрасывае все выделения и запоминания
+                #                                             сбрасываем все выделения и запоминания
                 if event_load.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     shutil.rmtree(rf'Saves/{current_page}/{last_clicked}')
                     kill_buttons(buttons)
@@ -395,7 +395,7 @@ def show_load_screen():
                         if last_clicked is not None and saves[last_clicked - 1]:
                             load_game(rf'Saves/{current_page}/{last_clicked}')
 
-                    # Нажата кнопка загрузки - если выделено правильное сохранение, запросим
+                    # Нажата кнопка удаления - если выделено правильное сохранение, запросим
                     #                                                               подтверждение
                     if event_load.ui_element == remove_btn:
                         if last_clicked is not None and saves[last_clicked - 1]:
@@ -410,7 +410,7 @@ def show_load_screen():
 
             UIManager.process_events(event_load)
 
-        # Отрисовываем сначала фон, потом изображения сохранения, затем кнопки
+        # Отрисовываем сначала фон, потом изображения сохранений, затем кнопки
         screen.blit(bg, (0, 0))
         for i in range(3):
             for j in range(3):
@@ -422,7 +422,7 @@ def show_load_screen():
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
-    # Перед возвращение в меню, удалим все созданные кнопки
+    # Перед возвращением в меню, удалим все созданные кнопки
     kill_buttons(buttons)
     kill_buttons(page_buttons)
     load_btn.kill()
