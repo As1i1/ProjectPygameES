@@ -35,7 +35,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.cnt_frames = 0
         self.frames_lefts = []
         self.frames_rights = []
-        self.timer = 50
+        self.static_timer = 50
+        self.timer = self.static_timer
         self.cut_sheet(sheet, columns, rows)
         self.is_rotate = False
         self.cur_frame = 0
@@ -52,6 +53,10 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 self.frames_lefts.append(pygame.transform.flip(self.frames_rights[-1], True, False))
         self.cnt_frames = len(self.frames_lefts)
 
+    def set_timer(self, m):
+        self.static_timer = m
+        self.timer = self.static_timer
+
     def update(self, *args, **kwargs):
         if self.timer == 0:
             self.cur_frame = (self.cur_frame + 1) % self.cnt_frames
@@ -59,7 +64,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 self.image = self.frames_lefts[self.cur_frame]
             else:
                 self.image = self.frames_rights[self.cur_frame]
-            self.timer = 25
+            self.timer = self.static_timer
         else:
             self.timer -= 1
 
@@ -92,20 +97,25 @@ class Hero(AnimatedSprite):
         super().__init__(sheet, columns, rows, *groups)
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
                                                pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        # Установливаем константу как быстро будет происходить смена спрайтов
+        self.set_timer(60)
 
+        # Задаем границы для камеры и изменение координат героя при выходе за границы
         self.lower_bound = 200
         self.upper_bound = 600
-        self.vx = 50
-        self.vx_timer = 1
         self.dx = 0
 
+        # Начальная скорость, счетчик действий для горизонтального движения
+        self.vx = 50
+        self.vx_timer = 1
+
+        # Начальная скорость, счетчик действий для прыжка
         self.jump_vy = 0
         self.jump_timer = 0
 
+        # Начальная скорость, счетчик действий для падения
         self.down_vy = 0
         self.down_timer = 0
-
-        self.timer = 75
 
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
