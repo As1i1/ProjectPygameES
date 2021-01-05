@@ -35,7 +35,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.cnt_frames = 0
         self.frames_lefts = []
         self.frames_rights = []
-        self.timer = 50
+        self.timer = 75
         self.cut_sheet(sheet, columns, rows)
         self.is_rotate = False
         self.cur_frame = 0
@@ -139,8 +139,8 @@ class Hero(AnimatedSprite):
         if keys[pygame.K_RIGHT]:
             if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
                     (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = False
                 if not cant_jump and not cant_fall:
-                    self.is_rotate = False
                     super().update(event)
                 self.rect.x += math.ceil(self.vx / FPS)
                 motion = True
@@ -148,8 +148,8 @@ class Hero(AnimatedSprite):
         if keys[pygame.K_LEFT]:
             if (self.jump_timer % 3 < 2 and cant_jump) or (self.down_timer % 3 < 2 and cant_fall) or \
                     (not cant_jump and not cant_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = True
                 if not cant_jump and not cant_fall:
-                    self.is_rotate = True
                     super().update(event)
                 self.rect.x -= math.ceil(self.vx / FPS)
                 motion = True
@@ -161,6 +161,11 @@ class Hero(AnimatedSprite):
 
         if not motion and self.cur_frame != 0:
              super().update(event)
+
+        if motion and self.is_rotate:
+            self.image = self.frames_lefts[self.cur_frame]
+        elif motion and not self.is_rotate:
+            self.image = self.frames_rights[self.cur_frame]
 
 
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
