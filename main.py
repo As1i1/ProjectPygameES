@@ -176,13 +176,30 @@ def terminate():
 
 
 def confirm_exit():
+    message = 'Вы действительно хотите '
+    if CURRENT_THEME == 'OD':
+        message += 'таскать мешки с сахаром?'
+    elif CURRENT_THEME == 'Alisa':
+        message += 'быть побитым гитарой?'
+    elif CURRENT_THEME == 'Miku':
+        message += 'попасть под обстрел словами?'
+    elif CURRENT_THEME == 'Lena':
+        message = 'Вдоль, а не поперек, верно?'
+    elif CURRENT_THEME == 'Ulyana':
+        message += 'обнаружить сороконожку под котлетой?'
+    elif CURRENT_THEME == 'Slavya':
+        message += 'подметать площадь все оставшиеся дни смены?'
+    elif CURRENT_THEME == 'Zhenya':
+        message += 'получить Достоевским по голове?'
+    elif CURRENT_THEME == 'UVAO':
+        message += 'быть расцарапаным с ног до головы?'
     pygame_gui.windows.UIConfirmationDialog(
         rect=pygame.Rect((250, 250), (500, 200)),
         manager=UIManager,
         window_title='Подтверждение',
-        action_long_desc='Вы действительно хотите таскать мешки с сахаром?',
+        action_long_desc=message,
         action_short_name='Да!',
-        blocking=True
+        blocking=True,
     )
 
 
@@ -468,31 +485,27 @@ if __name__ == '__main__':
     TILE_WIDTH, TILE_HEIGHT = 50, 50
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
-    UIManager = pygame_gui.UIManager(SIZE, 'base_theme.json')
+    UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/theme_{CURRENT_THEME}.json')
     # Создаём кнопки
     start_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
         text='Начать игру',
         manager=UIManager,
-        object_id=f"menu_{CURRENT_THEME}"
     )
     load_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 153), (300, 60)),
         text='Загрузить',
         manager=UIManager,
-        object_id=f"menu_{CURRENT_THEME}"
     )
     show_achievements_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 253), (300, 60)),
         text='Достижения',
         manager=UIManager,
-        object_id=f"menu_{CURRENT_THEME}"
     )
     exit_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 353), (300, 60)),
         text='Выйти',
         manager=UIManager,
-        object_id=f"menu_{CURRENT_THEME}"
     )
 
     # Фон меню

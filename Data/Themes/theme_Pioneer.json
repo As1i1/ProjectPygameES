@@ -1,0 +1,141 @@
+ {
+     "#button_tool_prototype":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#E0FFFF",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         },
+         "font":
+         {
+             "name": "standart",
+             "size": "30",
+             "regular_path": "Data\\Normal.ttf"
+         }
+     },
+     "tool_btn":
+     {
+       "prototype": "#button_tool_prototype",
+       "font":
+       {
+           "name": "standart",
+           "size": "40",
+           "regular_path": "Data\\Normal.ttf"
+       }
+     },
+     "clicked_page_btn":
+     {
+       "prototype": "#button_tool_prototype",
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#DA70D6",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#e000a9",
+             "active_text": "#ff89ff"
+         }
+     },
+     "page_btn":
+     {
+       "prototype": "#button_tool_prototype"
+     },
+     "saved_image_btn":
+     {
+       "prototype": "#button_tool_prototype",
+       "font":
+       {
+           "name": "standart",
+           "size": "15",
+           "regular_path": "Data\\Normal.ttf"
+       },
+       "misc":
+       {
+           "text_horiz_alignment": "left",
+           "text_vert_alignment": "top"
+       }
+     },
+     "#button_prototype":
+     {
+       "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "normal_text": "#8B0000",
+             "hovered_text": "#CD0000",
+             "active_text": "#ff6b6d"
+         },
+       "font": {
+             "size": "30",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#confirmation_dialog.#cancel_button":
+     {
+         "prototype": "#button_prototype"
+     },
+     "#confirmation_dialog.#confirm_button":
+     {
+         "prototype": "#button_prototype"
+     },
+     "#confirmation_dialog.text_box":
+     {
+         "font": {
+             "size": "25",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "window.#title_bar":
+     {
+         "prototype": "#button_prototype"
+     },
+     "button":
+     {
+         "prototype": "#button_prototype",
+         "font": {
+             "size": "60",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+
+     "#bus_to_hell_prototype":
+     {
+       "colours": {
+             "normal_text": "#8B0000"
+         },
+       "font": {
+             "size": "35",
+             "name": "pioneeria",
+             "regular_path": "Data\\pioneeria.otf"
+         }
+     },
+     "#message_window.text_box":
+     {
+       "prototype": "#bus_to_hell_prototype"
+     },
+     "#message_window.#title_bar":
+     {
+       "prototype": "#bus_to_hell_prototype"
+     },
+     "#message_window.#dismiss_button":
+     {
+       "prototype": "#bus_to_hell_prototype"
+     }
+ }
