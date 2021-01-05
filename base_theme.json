@@ -92,9 +92,9 @@
              "text_vert_alignment": "top"
          }
      },
-     "button":
+     "#button_confirm":
      {
-         "colours":
+       "colours":
          {
              "normal_bg": "#00000000",
              "normal_text": "#9c00ff",
@@ -105,6 +105,56 @@
              "active_border": "#00000000",
              "hovered_text": "#e000a9",
              "active_text": "#ff89ff"
+         }
+     },
+     "#confirmation_dialog.#cancel_button":
+     {
+         "prototype": "#button_confirm",
+         "font": {
+             "size": "30",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#confirmation_dialog.#confirm_button":
+     {
+         "prototype": "#button_confirm",
+         "font": {
+             "size": "30",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#confirmation_dialog.text_box":
+     {
+         "font": {
+             "size": "25",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "window.#title_bar":
+     {
+         "prototype": "#button_confirm",
+         "font": {
+             "size": "30",
+             "name": "bolder",
+             "regular_path": "Data\\Third_font.ttf"
+         }
+     },
+     "#menu_button":
+     {
+         "colours":
+         {
+             "normal_bg": "#00000000",
+             "normal_text": "#b470ff",
+             "normal_border": "#00000000",
+             "hovered_bg": "#00000000",
+             "hovered_border": "#00000000",
+             "active_bg": "#00000000",
+             "active_border": "#00000000",
+             "hovered_text": "#ff89ff",
+             "active_text": "#fac9ff"
          },
          "font":
          {
@@ -114,39 +164,115 @@
              "bold_italic_path": "Data\\Third_font.ttf"
          }
      },
-     "#confirmation_dialog.#cancel_button":
+     "menu_Alisa":
      {
-         "font":
-         {
-             "name": "bolder",
-             "size": "30",
-             "regular_path": "Data\\Third_font.ttf"
+       "prototype": "#menu_button",
+       "colours": {
+           "normal_text": "#fe8800",
+           "hovered_text": "#ffae39",
+           "active_text": "#ffd58d"
+       }
+     },
+     "menu_Miku":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#7fffd4",
+             "hovered_text": "#00FFFF",
+             "active_text": "#E0FFFF"
+         }
+       },
+     "menu_Lena":
+       {
+         "prototype": "#menu_button"
+       },
+     "menu_Ulyana":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#ff533a",
+             "hovered_text": "#ff7b01",
+             "active_text": "#ffb084"
+         }
+       },
+     "menu_Slavya":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#f2c300",
+             "hovered_text": "#fffc00",
+             "active_text": "#f0ff97"
+         }
+       },
+     "menu_UVAO":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#A0522D",
+             "hovered_text": "#CD853F",
+             "active_text": "#DEB887"
+         }
+       },
+     "menu_Zhenya":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#0000CD",
+             "hovered_text": "#1E90FF",
+             "active_text": "#00BFFF"
+         }
+       },
+     "menu_OD":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#32CD32",
+             "hovered_text": "#00FF7F",
+             "active_text": "#98FB98"
+         }
+       },
+     "menu_Pioneer":
+       {
+         "prototype": "#menu_button",
+         "colours": {
+             "normal_text": "#8B0000",
+             "hovered_text": "#CD0000",
+             "active_text": "#00BFFF"
+         }
+       },
+     "#message_window.text_box":
+     {
+       "colours": {
+             "normal_text": "#8B0000"
+         },
+       "font": {
+             "size": "40",
+             "name": "pioneeria",
+             "regular_path": "Data\\pioneeria.otf"
          }
      },
-     "#confirmation_dialog.#confirm_button":
+     "#message_window.#title_bar":
      {
-         "font":
-         {
-             "name": "bolder",
-             "size": "30",
-             "regular_path": "Data\\Third_font.ttf"
+       "colours": {
+             "hovered_text": "#8B0000",
+             "active_text": "#8B0000",
+             "normal_text": "#8B0000"
+         },
+       "font": {
+             "size": "35",
+             "name": "pioneeria",
+             "regular_path": "Data\\pioneeria.otf"
          }
      },
-     "#confirmation_dialog.text_box":
+     "#message_window.#dismiss_button":
      {
-         "font": {
-             "name": "bolder",
-             "size": "25",
-             "regular_path": "Data\\Second_font.ttf"
-         }
-     },
-     "window.#title_bar":
-     {
-         "font": {
-             "name": "bolder",
-             "size": "30",
-             "regular_path": "Data\\Third_font.ttf"
+       "colours": {
+             "normal_text": "#8B0000"
+         },
+       "font": {
+             "size": "35",
+             "name": "pioneeria",
+             "regular_path": "Data\\pioneeria.otf"
          }
      }
-
  }

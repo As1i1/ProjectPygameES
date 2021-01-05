@@ -216,11 +216,14 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
+                names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
+                         'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле', 'Pioneer': 'Пионеру',
+                         'OD': 'Ольге Дмитриевне'}
                 pygame_gui.windows.UIConfirmationDialog(
                     rect=pygame.Rect((250, 250), (500, 200)),
                     manager=UIManager,
                     window_title='Подтверждение',
-                    action_long_desc='Вы действительно хотите вернуться к Алисе?',
+                    action_long_desc=f'Вы действительно хотите вернуться к {names[CURRENT_THEME]}?',
                     action_short_name='О да!',
                     blocking=True
                 )
@@ -435,6 +438,19 @@ def load_game(path):    # TODO Реализовать загрузку
 
 
 if __name__ == '__main__':
+    # Разнообразие в студию!
+    CURRENT_THEME = random.choice(
+        ['Alisa'] * 400 +   # 40%
+        ['Miku'] * 250 +    # 25%
+        ['Lena'] * 100 +    # 10%
+        ['Ulyana'] * 100 +  # 10%
+        ['Slavya'] * 50 +   # 5%
+        ['UVAO'] * 40 +     # 4%
+        ['Zhenya'] * 30 +   # 3%
+        ['OD'] * 29 +       # 2.9%
+        ['Pioneer']         # 0.1%
+    )
+
     # Инициализация
     pygame.init()
     SIZE = WIDTH, HEIGHT = 800, 600
@@ -458,27 +474,32 @@ if __name__ == '__main__':
         relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
         text='Начать игру',
         manager=UIManager,
+        object_id=f"menu_{CURRENT_THEME}"
     )
     load_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 153), (300, 60)),
         text='Загрузить',
-        manager=UIManager
+        manager=UIManager,
+        object_id=f"menu_{CURRENT_THEME}"
     )
     show_achievements_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 253), (300, 60)),
         text='Достижения',
-        manager=UIManager
+        manager=UIManager,
+        object_id=f"menu_{CURRENT_THEME}"
     )
     exit_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 353), (300, 60)),
         text='Выйти',
-        manager=UIManager
+        manager=UIManager,
+        object_id=f"menu_{CURRENT_THEME}"
     )
 
     # Фон меню
-    image_menu = load_image(r'Background\Menu_normal.jpg')
+    image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_normal.jpg')
 
     running = True
+    bus_to_hell = False
 
     clock = pygame.time.Clock()
 
@@ -486,23 +507,36 @@ if __name__ == '__main__':
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                confirm_exit()
+                if bus_to_hell:
+                    running = False
+                else:
+                    confirm_exit()
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     running = False
 
-                # Изменяем фон в зависимости он наведённости на одну из кнопок
-                if event.user_type == pygame_gui.UI_BUTTON_ON_UNHOVERED:
-                    image_menu = load_image(r'Background\Menu_normal.jpg')
-                if event.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
-                    if event.ui_element == start_game_btn:
-                        image_menu = load_image(r'Background\Menu_play.jpg')
-                    if event.ui_element == load_game_btn:
-                        image_menu = load_image(r'Background\Menu_surprised.jpg')
-                    if event.ui_element == show_achievements_btn:
-                        image_menu = load_image(r'Background\Menu_embarrassed.jpg')
-                    if event.ui_element == exit_btn:
-                        image_menu = load_image(r'Background\Menu_angry.jpg')
+                if not bus_to_hell:
+                    # Изменяем фон в зависимости он наведённости на одну из кнопок
+                    if event.user_type == pygame_gui.UI_BUTTON_ON_UNHOVERED:
+                        image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_normal.jpg')
+                    if event.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
+                        if event.ui_element == start_game_btn:
+                            image_menu = \
+                                load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_play.jpg')
+                        if event.ui_element == load_game_btn:
+                            image_menu = \
+                                load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_load.jpg')
+                        if event.ui_element == show_achievements_btn:
+                            image_menu = \
+                                load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_achievements.jpg')
+                        if event.ui_element == exit_btn:
+                            image_menu = \
+                                load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_exit.jpg')
+                            if CURRENT_THEME == 'Lena':
+                                Lenas_instability = random.randrange(0, 100)
+                                if Lenas_instability >= 80:
+                                    image_menu = load_image(
+                                        rf'Background\Menu\{CURRENT_THEME}\Menu_exit_knife.jpg')
 
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     start_game_btn.hide()
@@ -524,12 +558,27 @@ if __name__ == '__main__':
                     if event.ui_element == show_achievements_btn:
                         show_achievements_storage()
                     if event.ui_element == exit_btn:
-                        confirm_exit()
+                        if CURRENT_THEME != 'Pioneer':
+                            confirm_exit()
+                        else:
+                            bus_to_hell = True
+                            image_menu = load_image(
+                                rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
+                            pygame_gui.windows.ui_message_window.UIMessageWindow(
+                                rect=pygame.Rect((150, 170), (550, 250)),
+                                manager=UIManager,
+                                window_title="Выхода нет!",
+                                html_message=f"Тебе не сбежать отсюда, "
+                                             f"{os.getlogin()}! "
+                                             f"Наш автобус отправляется в ад! "
+                                             f"Аха-ха-ха!"
+                            )
 
-                    start_game_btn.show()
-                    show_achievements_btn.show()
-                    load_game_btn.show()
-                    exit_btn.show()
+                    if not bus_to_hell:
+                        start_game_btn.show()
+                        show_achievements_btn.show()
+                        load_game_btn.show()
+                        exit_btn.show()
 
             UIManager.process_events(event)
 
