@@ -17,7 +17,7 @@
          {
              "name": "standart",
              "size": "30",
-             "regular_path": "Data\\Normal.ttf"
+             "regular_path": "Data\\Fonts\\Normal.ttf"
          }
      },
      "tool_btn":
@@ -27,7 +27,7 @@
        {
            "name": "standart",
            "size": "40",
-           "regular_path": "Data\\Normal.ttf"
+           "regular_path": "Data\\Fonts\\Normal.ttf"
        }
      },
      "clicked_page_btn":
@@ -57,7 +57,7 @@
        {
            "name": "standart",
            "size": "15",
-           "regular_path": "Data\\Normal.ttf"
+           "regular_path": "Data\\Fonts\\Normal.ttf"
        },
        "misc":
        {
@@ -82,7 +82,7 @@
        "font": {
              "size": "30",
              "name": "bolder",
-             "regular_path": "Data\\Third_font.ttf"
+             "regular_path": "Data\\Fonts\\Third_font.ttf"
          }
      },
      "#confirmation_dialog.#cancel_button":
@@ -98,7 +98,7 @@
          "font": {
              "size": "25",
              "name": "bolder",
-             "regular_path": "Data\\Third_font.ttf"
+             "regular_path": "Data\\Fonts\\Third_font.ttf"
          }
      },
      "window.#title_bar":
@@ -111,7 +111,7 @@
          "font": {
              "size": "60",
              "name": "bolder",
-             "regular_path": "Data\\Third_font.ttf"
+             "regular_path": "Data\\Fonts\\Third_font.ttf"
          }
      },
 
@@ -123,7 +123,7 @@
        "font": {
              "size": "35",
              "name": "pioneeria",
-             "regular_path": "Data\\pioneeria.otf"
+             "regular_path": "Data\\Fonts\\pioneeria.otf"
          }
      },
      "#message_window.text_box":
