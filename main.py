@@ -35,7 +35,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.cnt_frames = 0
         self.frames_lefts = []
         self.frames_rights = []
-        self.timer = 75
+        self.timer = 50
         self.cut_sheet(sheet, columns, rows)
         self.is_rotate = False
         self.cur_frame = 0
@@ -105,6 +105,8 @@ class Hero(AnimatedSprite):
         self.down_vy = 0
         self.down_timer = 0
 
+        self.timer = 75
+
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
 
@@ -166,7 +168,6 @@ class Hero(AnimatedSprite):
             self.image = self.frames_lefts[self.cur_frame]
         elif motion and not self.is_rotate:
             self.image = self.frames_rights[self.cur_frame]
-
 
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
