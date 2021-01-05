@@ -89,10 +89,10 @@ class Camera:
         target.dx = 0
 
 
-class Asphalt(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, *groups):
+class Bound(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, bound_image, *groups):
         super().__init__(*groups)
-        self.image = load_image(r'Background/Constructions/asphalt.png')
+        self.image = load_image(bound_image)
         self.rect = self.image.get_rect().move(
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
@@ -243,7 +243,7 @@ def generate_level(level, hero_groups, asphalt_groups):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
-                Asphalt(x, y, *asphalt_groups)
+                Bound(x, y, r'Background/Constructions/asphalt.png', *asphalt_groups)
             if level[y][x] == 'H':
                 hero = Hero(load_image("Sprites\Semen\Semen-test2.png"), 4, 1, x, y, *hero_groups)
                 pos_x, pos_y = x, y
