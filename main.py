@@ -29,6 +29,11 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
+def draw_hero_data(hero):
+    text = COUNTER_BOOKS_FONT.render(f"Собрано книг: {hero.counter_books}/{hero.all_books}", True, (125, 0, 0))
+    screen.blit(text, (0, 0))
+
+
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, *groups):
         super().__init__(*groups)
@@ -92,11 +97,21 @@ class Asphalt(pygame.sprite.Sprite):
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
 
+class Book(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, *groups):
+        super().__init__(*groups)
+        self.image = load_image(r"Background\Constructions\redbook.png")
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
+
+
 class Hero(AnimatedSprite):
     def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
         super().__init__(sheet, columns, rows, *groups)
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
                                                pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        self.counter_books = 0
+        self.all_books = 0
+        self.health = 100
         # Установливаем константу как быстро будет происходить смена спрайтов
         self.set_timer(60)
 
@@ -184,6 +199,12 @@ class Hero(AnimatedSprite):
         if 1 in (collide := self.collide_asphalt()):
             self.rect.x = collide[1]
 
+        # Проверка пересечения с книгами
+        books = pygame.sprite.spritecollide(self, book_group, False)
+        for book in books:
+            if pygame.sprite.collide_mask(self, book):
+                self.counter_books += 1
+                book.kill()
         self.check_bounds()
 
     def collide_asphalt(self):
@@ -210,14 +231,15 @@ class Hero(AnimatedSprite):
 
 
 class BackGround(pygame.sprite.Sprite):
-    def __init__(self, pos_x, *groups):
+    def __init__(self, pos_x, background_image, *groups):
         super().__init__(*groups)
-        self.image = load_image(r'Background\city_background_sunset — копия.png')
+        self.image = load_image(background_image)
         self.rect = self.image.get_rect().move(pos_x, 0)
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    hero, pos_x, pos_y = None, None, None
+    # H - герой, a - асфальт, b - книга
+    hero, pos_x, pos_y, cnt_books = None, None, None, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
@@ -225,6 +247,10 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'H':
                 hero = Hero(load_image("Sprites\Semen\Semen-test2.png"), 4, 1, x, y, *hero_groups)
                 pos_x, pos_y = x, y
+            if level[y][x] == 'b':
+                cnt_books += 1
+                Book(x, y, [all_sprites, book_group])
+    hero.all_books = cnt_books
     return hero, pos_x, pos_y
 
 
@@ -263,7 +289,8 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
     """Запуск игры (игрового цикла)"""
 
     camera = Camera()
-    bg_first, bg_second = BackGround(-4000, all_sprites), BackGround(0, all_sprites)
+    bg_first, bg_second = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites), \
+                          BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
     hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'),
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
@@ -287,6 +314,7 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         screen.fill((0, 0, 0))
         all_sprites.draw(screen)
         hero_group.draw(screen)
+        draw_hero_data(hero)
         pygame.display.flip()
 
     return
@@ -348,6 +376,8 @@ if __name__ == '__main__':
 
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
+    # Константа шрифта
+    COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
     UIManager = pygame_gui.UIManager(SIZE, 'base_theme.json')
@@ -410,6 +440,7 @@ if __name__ == '__main__':
                         enemy_group = pygame.sprite.Group()
                         whero_group = pygame.sprite.Group()
                         all_sprites = pygame.sprite.Group()
+                        book_group = pygame.sprite.Group()
 
                         play_game()
                     if event.ui_element == load_game_btn:
