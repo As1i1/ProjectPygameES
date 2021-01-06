@@ -274,9 +274,7 @@ def active_pause_menu():
                             terminate()
                         else:
 
-                            global bus_to_hell, image_menu
-                            bus_to_hell = True
-                            image_menu = set_bus_to_hell()
+                            set_bus_to_hell()
                             return pygame.QUIT
 
                     else:
@@ -648,6 +646,9 @@ def load_game(path):    # TODO Реализовать загрузку
 
 
 def set_bus_to_hell():
+    global bus_to_hell, image_menu
+
+    bus_to_hell = True
     start_game_btn.hide()
     show_achievements_btn.hide()
     load_game_btn.hide()
@@ -661,7 +662,7 @@ def set_bus_to_hell():
                      f"Наш автобус отправляется в ад! "
                      f"Аха-ха-ха!"
     )
-    return load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
+    image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
 
 
 if __name__ == '__main__':
@@ -734,8 +735,7 @@ if __name__ == '__main__':
                     running = False
                 else:
                     if CURRENT_THEME == 'Pioneer':
-                        bus_to_hell = True
-                        image_menu = set_bus_to_hell()
+                        set_bus_to_hell()
                     else:
                         confirm_exit()
             if event.type == pygame.USEREVENT:
@@ -788,8 +788,7 @@ if __name__ == '__main__':
                         if CURRENT_THEME != 'Pioneer':
                             confirm_exit()
                         else:
-                            bus_to_hell = True
-                            image_menu = set_bus_to_hell()
+                            set_bus_to_hell()
 
                     if not bus_to_hell:
                         start_game_btn.show()
