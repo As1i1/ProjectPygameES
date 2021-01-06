@@ -97,11 +97,127 @@ class Bound(pygame.sprite.Sprite):
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
 
+class Shell(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprite, route, *groups):
+        super().__init__(*groups)
+        self.image = load_image(sprite)
+        self.rect = self.image.get_rect().move(x, y)
+
+        self.route = route
+        self.vx = 100
+        self.vx_timer = 1
+
+    def update(self, *args, **kwargs):
+        bounds = pygame.sprite.spritecollide(self, bound_group, False)
+        if bounds:
+            for sprite in bounds:
+                if pygame.sprite.collide_mask(self, sprite):
+                    self.kill()
+
+        if self.vx_timer % 3 > 2 and self.route == 'Right':
+            self.rect.x += math.ceil(self.vx / FPS)
+        if self.vx_timer % 3 > 2 and self.route == 'Left':
+            self.rect.x -= math.ceil(self.vx / FPS)
+
+        if self.rect.x < 0 or self.rect.x + self.rect.w > WIDTH:
+            self.kill()
+
+
 class Book(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, *groups):
         super().__init__(*groups)
         self.image = load_image(r"Background\Constructions\redbook.png")
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
+
+
+class Enemy(AnimatedSprite):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, *groups)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
+                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        self.vx = 50
+        self.vx_timer = 1
+        self.absolute_x = pos_x * TILE_WIDTH
+        self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
+        self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
+        self.is_go_left = True
+
+        print(self.left_bound, self.right_bound, self.absolute_x)
+
+        self.down_vy = 0
+        self.down_timer = 0
+
+    def update(self, *args, **kwargs):
+        in_fall = False
+        swap = False
+        last_x = self.rect.x
+
+        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
+        if 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
+            if self.down_timer == 0:
+                self.down_vy = 1
+                self.down_timer = HEIGHT
+            if self.down_timer % 3 < 2:
+                self.rect.y += math.ceil(self.down_vy / FPS)
+                self.down_vy += 1
+            self.down_timer -= 1
+            in_fall = True
+        else:
+            self.down_vy = 0
+            self.down_timer = 0
+            in_fall = False
+
+        # Перемещаем персонажа
+        if not self.is_go_left:
+            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = False
+                if not in_fall:
+                    super().update(event)
+                self.rect.x += math.ceil(self.vx / FPS)
+                self.absolute_x += math.ceil(self.vx / FPS)
+            self.vx_timer = (self.vx_timer + 1) % 3
+        if self.is_go_left:
+            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = True
+                if not in_fall:
+                    super().update(event)
+                self.rect.x -= math.ceil(self.vx / FPS)
+                self.absolute_x -= math.ceil(self.vx / FPS)
+            self.vx_timer = (self.vx_timer + 1) % 3
+
+        if self.absolute_x >= self.right_bound:
+            swap = True
+            self.is_go_left = True
+        if self.absolute_x <= self.left_bound:
+            swap = True
+            self.is_go_left = False
+
+        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
+        # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
+        if 1 in (collide := self.collide_asphalt()):
+            delta = self.rect.x - last_x
+            self.rect.x = last_x
+            self.absolute_x += delta
+            if not swap:
+                self.is_go_left = not self.is_go_left
+
+    def collide_asphalt(self):
+        """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
+            0, если персонаж пересекается с асфальтом снизу,
+            1, если пересекается с асфальтом справа или слева,
+            2, если пересекается с асфальтом сверху"""
+
+        res = {}
+        for collide in pygame.sprite.spritecollide(self, bound_group, False):
+            if abs(collide.rect.y - self.rect.y - self.rect.h) <= 2:
+                res[0] = True
+            elif abs(collide.rect.y + collide.rect.h - self.rect.y) <= 2:
+                res[2] = True
+            elif collide.rect.x + collide.rect.w < self.rect.x + self.rect.w:
+                res[1] = collide.rect.x + collide.rect.w
+            elif collide.rect.x > self.rect.x:
+                res[1] = collide.rect.x - self.rect.w
+        return res
 
 
 class Hero(AnimatedSprite):
@@ -131,6 +247,10 @@ class Hero(AnimatedSprite):
         # Начальная скорость, счетчик действий для падения
         self.down_vy = 0
         self.down_timer = 0
+
+        # Частота Снарядов
+        self.shell_timer = 1000 // (FPS * 2)
+        self.shell_current_time = 0
 
     def update(self, *args, **kwargs):
         keys = pygame.key.get_pressed()
@@ -205,6 +325,20 @@ class Hero(AnimatedSprite):
             if pygame.sprite.collide_mask(self, book):
                 self.counter_books += 1
                 book.kill()
+
+        # Выпускание снаряда
+        if keys[pygame.K_SPACE] and self.shell_current_time == 0:
+            if self.is_rotate:
+                Shell(self.rect.x, self.rect.y + 10, r'Background\Constructions\bag.png', 'Left',
+                      [all_sprites, shell_group])
+            else:
+                Shell(self.rect.x + self.rect.w, self.rect.y + 10, r'Background\Constructions\bag.png', 'Right',
+                      [all_sprites, shell_group])
+            self.shell_current_time = self.shell_timer
+
+        if self.shell_current_time > 0:
+            self.shell_current_time -= 1
+
         self.check_bounds()
 
     def collide_asphalt(self):
@@ -238,7 +372,7 @@ class BackGround(pygame.sprite.Sprite):
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    # H - герой, a - асфальт, b - книга
+    # H - герой, a - асфальт, b - книга, E - враг
     hero, pos_x, pos_y, cnt_books = None, None, None, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
@@ -250,6 +384,8 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'b':
                 cnt_books += 1
                 Book(x, y, [all_sprites, book_group])
+            if level[y][x] == "E":
+                Enemy(load_image("Sprites\Semen\Semen-test2.png"), 4, 1, x, y, [enemy_group, all_sprites])
     hero.all_books = cnt_books
     return hero, pos_x, pos_y
 
@@ -294,7 +430,6 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
     hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'),
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
-
     running_game = True
     while running_game:
         for event_game in pygame.event.get():
@@ -303,6 +438,8 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                 running_game = False
 
         hero_group.update(event)
+        enemy_group.update(event)
+        shell_group.update(event)
         camera.update(hero)
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
@@ -441,6 +578,7 @@ if __name__ == '__main__':
                         whero_group = pygame.sprite.Group()
                         all_sprites = pygame.sprite.Group()
                         book_group = pygame.sprite.Group()
+                        shell_group = pygame.sprite.Group()
 
                         play_game()
                     if event.ui_element == load_game_btn:
