@@ -270,7 +270,15 @@ def active_pause_menu():
                     kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
                                   exit_to_menu_btn, exit_from_pause_btn])
                     if quit_game:
-                        terminate()
+                        if CURRENT_THEME != 'Pioneer':
+                            terminate()
+                        else:
+
+                            global bus_to_hell, image_menu
+                            bus_to_hell = True
+                            image_menu = set_bus_to_hell()
+                            return pygame.QUIT
+
                     else:
                         return pygame.QUIT
 
