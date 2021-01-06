@@ -6,6 +6,7 @@ import math
 import shutil
 from copy import deepcopy
 import random
+import datetime
 
 
 def load_image(name, colorkey=None, directory='data'):
@@ -218,6 +219,124 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
+def active_pause_menu():
+    # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
+    # чтобы в случае сохранения сохранить его в качестве превью
+    preview_to_save = pygame.transform.scale(screen, (175, 110))
+    screen.blit(load_image(r'Background/Dark.png'), (0, 0))
+    bg = screen.copy()
+
+    # Создаём кнопки
+    release_pause_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((46, 53), (350, 60)),
+        text='Продолжить',
+        manager=UIManager
+    )
+    save_game_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((46, 153), (350, 60)),
+        text='Сохранить',
+        manager=UIManager
+    )
+    load_game_from_pause_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((46, 253), (350, 60)),
+        text='Загрузить',
+        manager=UIManager
+    )
+    exit_to_menu_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((46, 353), (350, 60)),
+        text='Выйти в меню',
+        manager=UIManager
+    )
+    exit_from_pause_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.rect.Rect((46, 453), (350, 60)),
+        text='Выйти из игры',
+        manager=UIManager
+    )
+
+    pause_activated = True
+    quit_game = False       # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
+
+    while pause_activated:
+        pause_time_delta = clock.tick() / 1000
+        for event_pause in pygame.event.get():
+            if event_pause.type == pygame.QUIT or (event_pause.type == pygame.KEYDOWN and
+                                                   event_pause.key == pygame.K_ESCAPE):
+                pause_activated = False
+
+            # Закрываем игру или возвращаем константу, которая даст сигнал о выходе в меню,
+            # в зависимости от подтверждённого диалога (что сделать нам помогает quit_game)
+            if event_pause.type == pygame.USEREVENT:
+                if event_pause.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                    kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
+                                  exit_to_menu_btn, exit_from_pause_btn])
+                    if quit_game:
+                        terminate()
+                    else:
+                        return pygame.QUIT
+
+                if event_pause.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    # Попытка выхода из игры - запрашиваем подтверждение
+                    if event_pause.ui_element == exit_from_pause_btn:
+                        pygame_gui.windows.UIConfirmationDialog(
+                            rect=pygame.Rect(250, 250, 500, 200),
+                            manager=UIManager,
+                            window_title='Подтверждение',
+                            action_short_name='Да',
+                            action_long_desc='Вы действительно хотите выйти из игры?',
+                            blocking=True
+                        )
+                        quit_game = True
+
+                    # Попытка выхода в меню - запрашиваем подтверждение
+                    if event_pause.ui_element == exit_to_menu_btn:
+                        quit_game = False
+                        names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
+                                 'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
+                                 'Pioneer': 'Пионеру',
+                                 'OD': 'Ольге Дмитриевне'}
+                        pygame_gui.windows.UIConfirmationDialog(
+                            rect=pygame.Rect((250, 250), (500, 200)),
+                            manager=UIManager,
+                            window_title='Подтверждение',
+                            action_long_desc=f'Вы действительно хотите вернуться к '
+                                             f'{names[CURRENT_THEME]}?',
+                            action_short_name='О да!',
+                            blocking=True
+                        )
+
+                    # Выходим из режима паузы
+                    if event_pause.ui_element == release_pause_btn:
+                        pause_activated = False
+
+                    # Запускаем меню загрузки/сохранения, предварительно убрав с экрана кнопки
+                    if event_pause.ui_element == load_game_from_pause_btn or \
+                            event_pause.ui_element == save_game_btn:
+                        for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
+                                    exit_to_menu_btn, exit_from_pause_btn]:
+                            btn.hide()
+
+                        if event_pause.ui_element == load_game_from_pause_btn:
+                            show_load_screen(ask_for_confirm=True)
+                        else:
+                            show_load_screen(save_instead_of_load=True, preview=preview_to_save)
+
+                        for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
+                                    exit_to_menu_btn, exit_from_pause_btn]:
+                            btn.show()
+
+            UIManager.process_events(event_pause)
+
+        screen.fill((0, 0, 0))
+        screen.blit(bg, (0, 0))
+        UIManager.update(pause_time_delta)
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+    kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn, exit_to_menu_btn,
+                  exit_from_pause_btn])
+    return
+
+
 def play_game():            # TODO Сделать игру:D ага *****; за буквами следи
     """Запуск игры (игрового цикла)"""
 
@@ -233,19 +352,8 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
-                names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
-                         'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле', 'Pioneer': 'Пионеру',
-                         'OD': 'Ольге Дмитриевне'}
-                pygame_gui.windows.UIConfirmationDialog(
-                    rect=pygame.Rect((250, 250), (500, 200)),
-                    manager=UIManager,
-                    window_title='Подтверждение',
-                    action_long_desc=f'Вы действительно хотите вернуться к {names[CURRENT_THEME]}?',
-                    action_short_name='О да!',
-                    blocking=True
-                )
-            if event_game.type == pygame.USEREVENT:
-                if event_game.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                result = active_pause_menu()
+                if result == pygame.QUIT:
                     running_game = False
 
             UIManager.process_events(event_game)
@@ -331,10 +439,15 @@ def load_buttons(page):
 
     for i in range(3):
         for j in range(3):
+            if saves[3 * i + j]:
+                with open(rf'Saves/{page}/{3 * i + j + 1}/date.txt', 'r', encoding='utf-8') as f:
+                    date = f.read()
+            else:
+                date = 'Пусто'
             buttons.append(pygame_gui.elements.UIButton(
                 relative_rect=pygame.Rect((122 + 209 * j, 74 + 155 * i), (175, 110)),
                 manager=UIManager,
-                text=f'{3 * i + j + 1}. {"Пусто" if not saves[3 * i + j] else ""}',
+                text=f'{3 * i + j + 1}. {date}',
                 object_id="saved_image_btn"
             ))
             page_buttons.append(pygame_gui.elements.UIButton(
@@ -352,15 +465,23 @@ def kill_buttons(arr):
         btn.kill()
 
 
-def show_load_screen():
+def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=None):
+    """ask_for_confirm - запрашивать ли подтверждение при загрузке
+       (подтверждение необходимо в случае загрузки из меню паузы)
+
+       Если save_instead_of_load is True, тогда будет кнопка загрузить, вместо кнопки загрузки
+
+       Также если save_instead_of_load is True,
+                  необходимо передать preview - превью нового сохранения"""
+
     bg = load_image(r'Background/Load_screen.jpg')
 
     current_page = 1
     saves, buttons, page_buttons = load_buttons(current_page)
-    load_btn = pygame_gui.elements.UIButton(
+    func_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.Rect(171, 522, 209, 48),
         manager=UIManager,
-        text='Загрузить',
+        text='Загрузить' if save_instead_of_load is False else 'Сохранить',
         object_id="tool_btn"
     )
     remove_btn = pygame_gui.elements.UIButton(
@@ -369,9 +490,11 @@ def show_load_screen():
         text='Удалить',
         object_id="tool_btn"
     )
-    last_clicked = None
 
+    last_clicked = None
     running_load_screen = True
+    confirm_func = False        # Чтобы не запутаться, подтверждён ли диалог удаления или
+    #                                                                 загрузки/сохранения
 
     while running_load_screen:
         load_time_delta = clock.tick() / 1000
@@ -381,10 +504,21 @@ def show_load_screen():
                 running_load_screen = False
 
             if event_load.type == pygame.USEREVENT:
-                # Удаление подтверждено - удаляем сохранение, перезагружаем все кнопки и
-                #                                             сбрасываем все выделения и запоминания
+                # Если confirm_func is True, тогда подтверждена загрузка/сохранение, и мы
+                # загружаем/сохраняем игру, иначе подтверждено удаление - удаляем сохранение,
+                # перезагружаем все кнопки и сбрасываем все выделения и запоминания
                 if event_load.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                    shutil.rmtree(rf'Saves/{current_page}/{last_clicked}')
+                    if confirm_func:
+                        if save_instead_of_load:
+                            # Подтверждена попытка перезаписи сохранения
+                            save_game(current_page, last_clicked, preview, overwrite=True)
+                        else:
+                            # Подтверждена загрузка сохранения
+                            load_game(rf'Saves/{current_page}/{last_clicked}')
+                    else:
+                        # Подтверждено удаление сохранения
+                        shutil.rmtree(rf'Saves/{current_page}/{last_clicked}')
+
                     kill_buttons(buttons)
                     kill_buttons(page_buttons)
 
@@ -410,14 +544,55 @@ def show_load_screen():
                         bg = load_image(r'Background/Load_screen.jpg')
                         last_clicked = None
 
-                    # Нажата кнопка загрузки - если выделено правильное сохранение, загрузим игру
-                    if event_load.ui_element == load_btn:
-                        if last_clicked is not None and saves[last_clicked - 1]:
-                            load_game(rf'Saves/{current_page}/{last_clicked}')
+                    # Нажата кнопка загрузки - если выделено правильное сохранение, тогда,
+                    # если необходимо подтвержение (ask_to_confirm), запросим подтверждение,
+                    # иначе - загрузим игру
+                    if event_load.ui_element == func_btn:
+                        if save_instead_of_load and last_clicked is not None:
+                            if saves[last_clicked - 1]:
+                                # Попытка перезаписи сохранения - запросим подтверждение
+                                confirm_func = True
+                                pygame_gui.windows.UIConfirmationDialog(
+                                    rect=pygame.Rect((250, 250), (500, 200)),
+                                    manager=UIManager,
+                                    window_title='Подтверждение',
+                                    action_long_desc='Вы действительно хотите '
+                                                     'перезаписать это сохранение?',
+                                    action_short_name='Да',
+                                    blocking=True
+                                )
+                            else:
+                                # Сохранение в новым слот - подтверждение не требуется
+                                save_game(current_page, last_clicked, preview)
+                                kill_buttons(buttons)
+                                kill_buttons(page_buttons)
+
+                                saves, buttons, page_buttons = load_buttons(current_page)
+                                bg = load_image(r'Background/Load_screen.jpg')
+                                last_clicked = None
+
+                        else:
+                            if last_clicked is not None and saves[last_clicked - 1]:
+                                if ask_for_confirm:
+                                    # Необходимо подтверждение загрузки
+                                    confirm_func = True
+                                    pygame_gui.windows.UIConfirmationDialog(
+                                        rect=pygame.Rect((250, 250), (500, 200)),
+                                        manager=UIManager,
+                                        window_title='Подтверждение',
+                                        action_long_desc='Вы действительно хотите '
+                                                         'загрузить это сохранение?',
+                                        action_short_name='Да',
+                                        blocking=True
+                                    )
+                                else:
+                                    # Загружаем
+                                    load_game(rf'Saves/{current_page}/{last_clicked}')
 
                     # Нажата кнопка удаления - если выделено правильное сохранение, запросим
                     #                                                               подтверждение
                     if event_load.ui_element == remove_btn:
+                        confirm_func = False
                         if last_clicked is not None and saves[last_clicked - 1]:
                             pygame_gui.windows.UIConfirmationDialog(
                                 rect=pygame.Rect((250, 250), (500, 200)),
@@ -445,13 +620,40 @@ def show_load_screen():
     # Перед возвращением в меню, удалим все созданные кнопки
     kill_buttons(buttons)
     kill_buttons(page_buttons)
-    load_btn.kill()
+    func_btn.kill()
     remove_btn.kill()
     return
 
 
+def save_game(page, cell, preview, overwrite=False):
+    if overwrite:
+        shutil.rmtree(rf'Saves/{page}/{cell}')
+
+    os.makedirs(rf'Saves/{page}/{cell}')
+    pygame.image.save(preview, rf'Saves/{page}/{cell}/preview.jpg')
+    with open(rf'Saves/{page}/{cell}/date.txt', 'w', encoding='utf-8') as f:
+        f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
+
+
 def load_game(path):    # TODO Реализовать загрузку
     pass
+
+
+def set_bus_to_hell():
+    start_game_btn.hide()
+    show_achievements_btn.hide()
+    load_game_btn.hide()
+    exit_btn.hide()
+    pygame_gui.windows.ui_message_window.UIMessageWindow(
+        rect=pygame.Rect((150, 170), (550, 250)),
+        manager=UIManager,
+        window_title="Выхода нет!",
+        html_message=f"Тебе не сбежать отсюда, "
+                     f"{os.getlogin()}! "
+                     f"Наш автобус отправляется в ад! "
+                     f"Аха-ха-ха!"
+    )
+    return load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
 
 
 if __name__ == '__main__':
@@ -490,22 +692,22 @@ if __name__ == '__main__':
     start_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
         text='Начать игру',
-        manager=UIManager,
+        manager=UIManager
     )
     load_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 153), (300, 60)),
         text='Загрузить',
-        manager=UIManager,
+        manager=UIManager
     )
     show_achievements_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 253), (300, 60)),
         text='Достижения',
-        manager=UIManager,
+        manager=UIManager
     )
     exit_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 353), (300, 60)),
         text='Выйти',
-        manager=UIManager,
+        manager=UIManager
     )
 
     # Фон меню
@@ -523,7 +725,11 @@ if __name__ == '__main__':
                 if bus_to_hell:
                     running = False
                 else:
-                    confirm_exit()
+                    if CURRENT_THEME == 'Pioneer':
+                        bus_to_hell = True
+                        image_menu = set_bus_to_hell()
+                    else:
+                        confirm_exit()
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     running = False
@@ -575,17 +781,7 @@ if __name__ == '__main__':
                             confirm_exit()
                         else:
                             bus_to_hell = True
-                            image_menu = load_image(
-                                rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
-                            pygame_gui.windows.ui_message_window.UIMessageWindow(
-                                rect=pygame.Rect((150, 170), (550, 250)),
-                                manager=UIManager,
-                                window_title="Выхода нет!",
-                                html_message=f"Тебе не сбежать отсюда, "
-                                             f"{os.getlogin()}! "
-                                             f"Наш автобус отправляется в ад! "
-                                             f"Аха-ха-ха!"
-                            )
+                            image_menu = set_bus_to_hell()
 
                     if not bus_to_hell:
                         start_game_btn.show()
