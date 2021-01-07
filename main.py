@@ -1,4 +1,5 @@
 import pygame
+import time
 import os
 import sys
 import pygame_gui
@@ -30,7 +31,7 @@ def load_level(filename):
 
 
 def draw_hero_data(hero):
-    text = COUNTER_BOOKS_FONT.render(f"Собрано книг: {hero.counter_books}/{hero.all_books}", True, (125, 0, 0))
+    text = COUNTER_BOOKS_FONT.render(f"Собрано книг: {hero.counter_books}/{hero.all_books}, {hero.health}", True, (125, 0, 0))
     screen.blit(text, (0, 0))
 
 
@@ -102,7 +103,6 @@ class Shell(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.image = load_image(sprite)
         self.rect = self.image.get_rect().move(x, y)
-
         self.route = route
         self.vx = 100
         self.vx_timer = 1
@@ -114,10 +114,11 @@ class Shell(pygame.sprite.Sprite):
                 if pygame.sprite.collide_mask(self, sprite):
                     self.kill()
 
-        if self.vx_timer % 3 > 2 and self.route == 'Right':
+        if self.vx_timer % 3 < 2 and self.route == 'Right':
             self.rect.x += math.ceil(self.vx / FPS)
-        if self.vx_timer % 3 > 2 and self.route == 'Left':
+        if self.vx_timer % 3 < 2 and self.route == 'Left':
             self.rect.x -= math.ceil(self.vx / FPS)
+        self.vx_timer = (self.vx_timer + 1) % 3
 
         if self.rect.x < 0 or self.rect.x + self.rect.w > WIDTH:
             self.kill()
@@ -142,12 +143,16 @@ class Enemy(AnimatedSprite):
         self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
         self.is_go_left = True
 
-        print(self.left_bound, self.right_bound, self.absolute_x)
+        self.timer_damage = 200
+        self.cur_timer_damage = 0
 
         self.down_vy = 0
         self.down_timer = 0
 
     def update(self, *args, **kwargs):
+        if self.cur_timer_damage > 0:
+            self.cur_timer_damage -= 1
+
         in_fall = False
         swap = False
         last_x = self.rect.x
@@ -201,6 +206,12 @@ class Enemy(AnimatedSprite):
             if not swap:
                 self.is_go_left = not self.is_go_left
 
+        shell = pygame.sprite.spritecollide(self, shell_group, False)
+        for sprite in shell:
+            if pygame.sprite.collide_mask(self, sprite):
+                self.kill()
+                sprite.kill()
+
     def collide_asphalt(self):
         """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
             0, если персонаж пересекается с асфальтом снизу,
@@ -249,7 +260,7 @@ class Hero(AnimatedSprite):
         self.down_timer = 0
 
         # Частота Снарядов
-        self.shell_timer = 1000 // (FPS * 2)
+        self.shell_timer = 500
         self.shell_current_time = 0
 
     def update(self, *args, **kwargs):
@@ -339,6 +350,11 @@ class Hero(AnimatedSprite):
         if self.shell_current_time > 0:
             self.shell_current_time -= 1
 
+        enemy = pygame.sprite.spritecollide(self, enemy_group, False)
+        for sprite in enemy:
+            if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
+                self.health -= 5
+                sprite.cur_timer_damage = sprite.timer_damage
         self.check_bounds()
 
     def collide_asphalt(self):
@@ -372,7 +388,7 @@ class BackGround(pygame.sprite.Sprite):
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    # H - герой, a - асфальт, b - книга, E - враг
+    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена
     hero, pos_x, pos_y, cnt_books = None, None, None, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
@@ -386,6 +402,8 @@ def generate_level(level, hero_groups, asphalt_groups):
                 Book(x, y, [all_sprites, book_group])
             if level[y][x] == "E":
                 Enemy(load_image("Sprites\Semen\Semen-test2.png"), 4, 1, x, y, [enemy_group, all_sprites])
+            if level[y][x] == 'i':
+                Bound(x, y, r'Background\Constructions\empty.png', *asphalt_groups)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y
 
@@ -432,6 +450,8 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                                                   (bound_group, all_sprites))
     running_game = True
     while running_game:
+        if hero.health == 0:
+            return
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
@@ -440,13 +460,14 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         hero_group.update(event)
         enemy_group.update(event)
         shell_group.update(event)
+
+        # Движение BackGround`а (бесконечный фон)
+        move_background(bg_first, bg_second)
+
         camera.update(hero)
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
             camera.apply(sprite)
-
-        # Движение BackGround`а (бесконечный фон)
-        move_background(bg_first, bg_second)
 
         screen.fill((0, 0, 0))
         all_sprites.draw(screen)
