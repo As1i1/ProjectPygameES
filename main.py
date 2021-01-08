@@ -592,13 +592,22 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                                                   (bound_group, all_sprites))
     running_game = True
     while running_game:
-        if hero.health == 0:
+        game_time_delta = clock.tick() / 1000
+
+        if hero.health <= 0:
             return
+
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
-                running_game = False
+                result = active_pause_menu()
+                if result == pygame.QUIT:
+                    running_game = False
+
+            UIManager.process_events(event_game)
             all_sprites.update()
+
+        UIManager.update(game_time_delta)
         all_sprites.update()
 
         # Движение BackGround`а (бесконечный фон)
@@ -616,6 +625,7 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         all_sprites.draw(screen)
         hero_group.draw(screen)
         draw_hero_data(hero)
+        UIManager.draw_ui(screen)
         pygame.display.flip()
 
     return
