@@ -9,6 +9,354 @@ import random
 import datetime
 
 
+class AnimatedSprite(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, *groups):
+        super().__init__(*groups)
+        self.cnt_frames = 0
+        self.frames_lefts = []
+        self.frames_rights = []
+        self.static_timer = 50
+        self.timer = self.static_timer
+        self.cut_sheet(sheet, columns, rows)
+        self.is_rotate = False
+        self.cur_frame = 0
+        self.image = self.frames_rights[self.cur_frame]
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames_rights.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+                self.frames_lefts.append(pygame.transform.flip(self.frames_rights[-1], True, False))
+        self.cnt_frames = len(self.frames_lefts)
+
+    def set_timer(self, m):
+        self.static_timer = m
+        self.timer = self.static_timer
+
+    def update(self, *args):
+        if self.timer == 0:
+            self.cur_frame = (self.cur_frame + 1) % self.cnt_frames
+            if self.is_rotate:
+                self.image = self.frames_lefts[self.cur_frame]
+            else:
+                self.image = self.frames_rights[self.cur_frame]
+            self.timer = self.static_timer
+        else:
+            self.timer -= 1
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = target.dx
+        target.dx = 0
+
+
+class Bound(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, bound_image, *groups):
+        super().__init__(*groups)
+        self.image = load_image(bound_image)
+        self.rect = self.image.get_rect().move(
+            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
+
+
+class Book(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, *groups):
+        super().__init__(*groups)
+        self.image = load_image(r"Background\Constructions\redbook.png")
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class BackGround(pygame.sprite.Sprite):
+    def __init__(self, pos_x, background_image, *groups):
+        super().__init__(*groups)
+        self.image = load_image(background_image)
+        self.rect = self.image.get_rect().move(pos_x, 0)
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class Projectile(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprite, route, *groups):
+        super().__init__(*groups)
+        self.image = load_image(sprite)
+        self.rect = self.image.get_rect().move(x, y)
+        self.route = route
+        self.vx = 100
+        self.vx_timer = 1
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self):
+        collides = pygame.sprite.spritecollide(self, bound_group, False)
+        for sprite in collides:
+            if pygame.sprite.collide_mask(self, sprite):
+                self.kill()
+
+        if self.vx_timer % 3 < 2 and self.route == 'Right':
+            self.rect.x += math.ceil(self.vx / FPS)
+        if self.vx_timer % 3 < 2 and self.route == 'Left':
+            self.rect.x -= math.ceil(self.vx / FPS)
+        self.vx_timer = (self.vx_timer + 1) % 3
+
+
+class BaseEnemy(AnimatedSprite):    # TODO Сделать основной класс и наследовать от него Enemy и Hero
+    pass
+
+
+class Enemy(AnimatedSprite):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, *groups)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
+                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        self.vx = 50
+        self.vx_timer = 1
+        self.absolute_x = pos_x * TILE_WIDTH
+        self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
+        self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
+        self.is_go_left = True
+
+        self.timer_damage = 200
+        self.cur_timer_damage = 0
+
+        self.down_vy = 0
+        self.down_timer = 0
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self):
+        if self.cur_timer_damage > 0:
+            self.cur_timer_damage -= 1
+
+        swap = False
+        last_x = self.rect.x
+
+        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
+        if 1 not in (collide := collide_asphalt(self)) and 0 not in collide:
+            if self.down_timer == 0:
+                self.down_vy = 1
+                self.down_timer = HEIGHT
+            if self.down_timer % 3 < 2:
+                self.rect.y += math.ceil(self.down_vy / FPS)
+                self.down_vy += 1
+            self.down_timer -= 1
+            in_fall = True
+        else:
+            self.down_vy = 0
+            self.down_timer = 0
+            in_fall = False
+
+        # Перемещаем персонажа
+        if not self.is_go_left:
+            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = False
+                if not in_fall:
+                    super().update()
+                self.rect.x += math.ceil(self.vx / FPS)
+                self.absolute_x += math.ceil(self.vx / FPS)
+            self.vx_timer = (self.vx_timer + 1) % 3
+        if self.is_go_left:
+            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = True
+                if not in_fall:
+                    super().update()
+                self.rect.x -= math.ceil(self.vx / FPS)
+                self.absolute_x -= math.ceil(self.vx / FPS)
+            self.vx_timer = (self.vx_timer + 1) % 3
+
+        if self.absolute_x >= self.right_bound:
+            swap = True
+            self.is_go_left = True
+        if self.absolute_x <= self.left_bound:
+            swap = True
+            self.is_go_left = False
+
+        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
+        # то перемещаем его в самое близкое положение, где он не будет пересекаться с асфальтом
+        if 1 in collide_asphalt(self):
+            delta = self.rect.x - last_x
+            self.rect.x = last_x
+            self.absolute_x += delta
+            if not swap:
+                self.is_go_left = not self.is_go_left
+
+        collide_projectiles = pygame.sprite.spritecollide(self, projectile_group, False)
+        for sprite in collide_projectiles:
+            if pygame.sprite.collide_mask(self, sprite):
+                self.kill()
+                sprite.kill()
+
+
+class Hero(AnimatedSprite):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, *groups)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
+                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        self.counter_books = 0
+        self.health = 100
+        # Установливаем константу как быстро будет происходить смена спрайтов
+        self.set_timer(60)
+
+        # Задаем границы для камеры и изменение координат героя при выходе за границы
+        self.lower_bound = 200
+        self.upper_bound = 600
+        self.dx = 0
+
+        # Начальная скорость, счетчик действий для горизонтального движения
+        self.vx = 50
+        self.vx_timer = 1
+
+        # Начальная скорость, счетчик действий для прыжка
+        self.jump_vy = 0
+        self.jump_timer = 0
+
+        # Начальная скорость, счетчик действий для падения
+        self.down_vy = 0
+        self.down_timer = 0
+
+        # Частота Снарядов
+        self.projectile_timer = 500
+        self.projectile_current_time = 0
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+
+        motion = False  # Двигался ли герой
+        in_jump, in_fall = False, False   # Что бы нельзя было прыгать в воздухе
+
+        # Если идёт "анимация" прыжка
+        if self.jump_timer != 0:
+            in_fall = True
+            # Если мы ни во что не упираемся сверху
+            if 2 not in collide_asphalt(self):
+                if self.jump_timer % 3 < 2:
+                    self.rect.y -= math.ceil(self.jump_vy / FPS)
+                    self.jump_vy -= 1
+                self.jump_timer -= 1
+            else:
+                self.jump_vy = 0
+                self.jump_timer = 0
+
+        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
+        elif 1 not in (collide := collide_asphalt(self)) and 0 not in collide:
+            if self.down_timer == 0:
+                self.down_vy = 1
+                self.down_timer = HEIGHT
+            if self.down_timer % 3 < 2:
+                self.rect.y += math.ceil(self.down_vy / FPS)
+                self.down_vy += 1
+            self.down_timer -= 1
+            in_fall = True
+        else:
+            self.down_timer = 0
+            self.down_vy = 0
+            in_fall = False
+
+        # Перемещаем персонажа
+        if keys[pygame.K_RIGHT]:
+            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
+                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = False
+                if not in_jump and not in_fall:
+                    super().update()
+                self.rect.x += math.ceil(self.vx / FPS)
+                motion = True
+            self.vx_timer = (self.vx_timer + 1) % 3
+        if keys[pygame.K_LEFT]:
+            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
+                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
+                self.is_rotate = True
+                if not in_jump and not in_fall:
+                    super().update()
+                self.rect.x -= math.ceil(self.vx / FPS)
+                motion = True
+            self.vx_timer = (self.vx_timer + 1) % 3
+        if keys[pygame.K_UP] and not in_jump and not in_fall:
+            motion = True
+            self.jump_vy = 125
+            self.jump_timer = 2 * self.jump_vy
+
+        if not motion and self.cur_frame != 0:
+            super().update()
+
+        if motion and self.is_rotate:
+            self.image = self.frames_lefts[self.cur_frame]
+        elif motion and not self.is_rotate:
+            self.image = self.frames_rights[self.cur_frame]
+
+        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
+        # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
+        if 1 in (collide := collide_asphalt(self)):
+            self.rect.x = collide[1]
+
+        # Проверка пересечения с книгами
+        books = pygame.sprite.spritecollide(self, book_group, False)
+        for book in books:
+            if pygame.sprite.collide_mask(self, book):
+                self.counter_books += 1
+                book.kill()
+
+        # Выпускание снаряда
+        if keys[pygame.K_SPACE] and self.projectile_current_time == 0:
+            if self.is_rotate:
+                Projectile(self.rect.x, self.rect.y + 10,
+                           r'Background\Constructions\bag.png', 'Left',
+                           all_sprites, projectile_group)
+            else:
+                Projectile(self.rect.x + self.rect.w, self.rect.y + 10,
+                           r'Background\Constructions\bag.png', 'Right',
+                           all_sprites, projectile_group)
+
+            self.projectile_current_time = self.projectile_timer
+
+        if self.projectile_current_time > 0:
+            self.projectile_current_time -= 1
+
+        collides = pygame.sprite.spritecollide(self, enemy_group, False)
+        for sprite in collides:
+            if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
+                self.health -= 5
+                sprite.cur_timer_damage = sprite.timer_damage
+        self.check_bounds()
+
+    def check_bounds(self):
+        self.dx = max(min(self.upper_bound - self.rect.x, 0),
+                      max(self.lower_bound - self.rect.x, -1))
+
+
+def collide_asphalt(sprite):
+    """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
+        0, если персонаж пересекается с асфальтом снизу,
+        1, если пересекается с асфальтом справа или слева,
+        2, если пересекается с асфальтом сверху"""
+
+    res = {}
+    for collide in pygame.sprite.spritecollide(sprite, bound_group, False):
+        if abs(collide.rect.y - sprite.rect.y - sprite.rect.h) <= 5:
+            res[0] = True
+        elif abs(collide.rect.y + collide.rect.h - sprite.rect.y) <= 5:
+            res[2] = True
+        elif collide.rect.x + collide.rect.w < sprite.rect.x + sprite.rect.w:
+            res[1] = collide.rect.x + collide.rect.w
+        elif collide.rect.x > sprite.rect.x:
+            res[1] = collide.rect.x - sprite.rect.w
+    return res
+
+
 def load_image(name, colorkey=None, directory='data'):
     fullname = os.path.join(directory, name)
     if not os.path.isfile(fullname):
@@ -31,144 +379,34 @@ def load_level(filename):
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = target.dx
-        target.dx = 0
-
-
-class Asphalt(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, *groups):
-        super().__init__(*groups)
-        self.image = load_image(r'Background/Constructions/asphalt.png')
-        self.rect = self.image.get_rect().move(
-            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
-
-
-class Hero(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, *groups):
-        super().__init__(*groups)
-        self.image = load_image(r'Sprites\Semen\Walk (1).png')
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
-                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
-
-        self.lower_bound = 200
-        self.upper_bound = WIDTH - self.lower_bound
-        self.vx = 50
-        self.vx_timer = 1
-        self.dx = 0
-
-        self.jump_vy = 0
-        self.jump_timer = 0
-
-        self.down_vy = 0
-        self.down_timer = 0
-
-    def update(self, *args, **kwargs):
-        keys = pygame.key.get_pressed()
-
-        in_jump, in_fall = False, False   # Чтобы нельзя было прыгать в воздухе
-
-        # Если идёт "анимация" прыжка
-        if self.jump_timer != 0:
-            in_jump = True
-            # Если мы ни во что не упираемся сверху
-            if 2 not in self.collide_asphalt():
-                if self.jump_timer % 3 < 2:
-                    self.rect.y -= math.ceil(self.jump_vy / FPS)
-                    self.jump_vy -= 1
-                self.jump_timer -= 1
-            else:
-                self.jump_vy = 0
-                self.jump_timer = 0
-
-        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
-        elif 1 not in (collide := self.collide_asphalt()) and 0 not in collide:
-            if self.down_timer == 0:
-                self.down_vy = 1
-                self.down_timer = HEIGHT
-            if self.down_timer % 3 < 2:
-                self.rect.y += math.ceil(self.down_vy / FPS)
-                self.down_vy += 1
-            self.down_timer -= 1
-            in_fall = True
-
-        else:
-            self.down_timer = 0
-            self.down_vy = 0
-            in_fall = False
-
-        # Перемещаем персонажа
-        if keys[pygame.K_RIGHT]:
-            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
-                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
-                self.rect.x += math.ceil(self.vx / FPS)
-            self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_LEFT]:
-            if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
-                    (not in_jump and not in_fall and self.vx_timer % 3 < 2):
-                self.rect.x -= math.ceil(self.vx / FPS)
-            self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_UP] and not in_jump and not in_fall:
-            self.jump_vy = 125
-            self.jump_timer = 250
-
-        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
-        # то перемещаем его в самое близкое положение, где он не будет пересекаться с асфальтом
-        if 1 in (collide := self.collide_asphalt()):
-            self.rect.x = collide[1]
-
-        self.check_bounds()
-
-    def collide_asphalt(self):
-        """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
-            0, если персонаж пересекается с асфальтом снизу,
-            1, если пересекается с асфальтом справа или слева,
-            2, если пересекается с асфальтом сверху"""
-
-        res = {}
-        for collide in pygame.sprite.spritecollide(self, bound_group, False):
-            if abs(collide.rect.y - self.rect.y - self.rect.h) <= 5:
-                res[0] = True
-            elif abs(collide.rect.y + collide.rect.h - self.rect.y) <= 5:
-                res[2] = True
-            elif collide.rect.x + collide.rect.w < self.rect.x + self.rect.w:
-                res[1] = collide.rect.x + collide.rect.w
-            elif collide.rect.x > self.rect.x:
-                res[1] = collide.rect.x - self.rect.w
-        return res
-
-    def check_bounds(self):
-        self.dx = max(min(self.upper_bound - self.rect.x, 0),
-                      max(self.lower_bound - self.rect.x, -1))
-
-
-class BackGround(pygame.sprite.Sprite):
-    def __init__(self, pos_x, *groups):
-        super().__init__(*groups)
-        self.image = load_image(r'Background\city_background_sunset — копия.png')
-        self.rect = self.image.get_rect().move(pos_x, 0)
-
-
 def generate_level(level, hero_groups, asphalt_groups):
-    hero, pos_x, pos_y = None, None, None
+    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена
+    hero, pos_x, pos_y, cnt_books = None, None, None, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
-                Asphalt(x, y, *asphalt_groups)
+                Bound(x, y, r'Background/Constructions/asphalt.png', *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(x, y, *hero_groups)
+                hero = Hero(load_image(r"Sprites\Semen\Semen-test2.png"), 4, 1, x, y, *hero_groups)
                 pos_x, pos_y = x, y
+            if level[y][x] == 'b':
+                cnt_books += 1
+                Book(x, y, all_sprites, book_group)
+            if level[y][x] == "E":
+                Enemy(load_image(r"Sprites\Semen\Semen-test2.png"), 4, 1, x, y,
+                      enemy_group, all_sprites)
+            if level[y][x] == 'i':
+                Bound(x, y, r'Background\Constructions\empty.png', bound_group, invisible_bound)
+            if level[y][x] == 'g':
+                Bound(x, y, r'Background\Constructions\ground.jpg', *asphalt_groups)
+    hero.all_books = cnt_books
     return hero, pos_x, pos_y
+
+
+def draw_hero_data(hero):
+    text = COUNTER_BOOKS_FONT.render(f"Собрано книг: {hero.counter_books}/{hero.all_books}, "
+                                     f"{hero.health}", True, (125, 0, 0))
+    screen.blit(text, (0, 0))
 
 
 def terminate():
@@ -343,42 +581,41 @@ def active_pause_menu():
     return
 
 
-def play_game():            # TODO Сделать игру:D ага *****; за буквами следи
+def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
     camera = Camera()
-    bg_first, bg_second = BackGround(-4000, all_sprites), BackGround(0, all_sprites)
+    bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
+    bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
     hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'),
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
-
     running_game = True
     while running_game:
-        game_time_delta = clock.tick() / 1000
+        if hero.health == 0:
+            return
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
-                result = active_pause_menu()
-                if result == pygame.QUIT:
-                    running_game = False
-
-            UIManager.process_events(event_game)
-
-        UIManager.update(game_time_delta)
-
-        hero_group.update(event)
-        camera.update(hero)
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
+                running_game = False
+            all_sprites.update()
+        all_sprites.update()
 
         # Движение BackGround`а (бесконечный фон)
         move_background(bg_first, bg_second)
 
+        camera.update(hero)
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        for sprite in invisible_bound:
+            camera.apply(sprite)
+
         screen.fill((0, 0, 0))
+
         all_sprites.draw(screen)
         hero_group.draw(screen)
-        UIManager.draw_ui(screen)
+        draw_hero_data(hero)
         pygame.display.flip()
 
     return
@@ -694,6 +931,8 @@ if __name__ == '__main__':
 
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
+    # Константа шрифта
+    COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
     UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/theme_{CURRENT_THEME}.json')
@@ -778,6 +1017,9 @@ if __name__ == '__main__':
                         enemy_group = pygame.sprite.Group()
                         whero_group = pygame.sprite.Group()
                         all_sprites = pygame.sprite.Group()
+                        book_group = pygame.sprite.Group()
+                        projectile_group = pygame.sprite.Group()
+                        invisible_bound = pygame.sprite.Group()
 
                         play_game()
                     if event.ui_element == load_game_btn:
