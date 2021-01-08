@@ -113,5 +113,22 @@
              "name": "bolder",
              "regular_path": "Data\\Fonts\\Third_font.ttf"
          }
-     }
+     },
+   "#dialog_text_box":
+   {
+     "colours": {
+       "dark_bg": "#696969",
+       "normal_border": "#DDDDDD",
+       "normal_text": "#FFFFFF"
+     },
+     "misc": {
+       "shape": "rounded_rectangle",
+       "shape_corner_radius": "30"
+     },
+     "font": {
+             "size": "22",
+             "name": "bolder",
+             "regular_path": "Data\\Fonts\\Third_font.ttf"
+         }
+   }
  }

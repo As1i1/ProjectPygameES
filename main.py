@@ -4,9 +4,12 @@ import sys
 import pygame_gui
 import math
 import shutil
-from copy import deepcopy
 import random
 import datetime
+
+
+class ExitToMenuException(Exception):
+    pass
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -112,131 +115,30 @@ class Projectile(pygame.sprite.Sprite):
         self.vx_timer = (self.vx_timer + 1) % 3
 
 
-class BaseEnemy(AnimatedSprite):    # TODO Сделать основной класс и наследовать от него Enemy и Hero
-    pass
-
-
-class Enemy(AnimatedSprite):
+class BaseEnemy(AnimatedSprite):
     def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
         super().__init__(sheet, columns, rows, *groups)
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
-                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
-        self.vx = 50
-        self.vx_timer = 1
-        self.absolute_x = pos_x * TILE_WIDTH
-        self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
-        self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
-        self.is_go_left = True
-
-        self.timer_damage = 200
-        self.cur_timer_damage = 0
-
-        self.down_vy = 0
-        self.down_timer = 0
-
-        self.mask = pygame.mask.from_surface(self.image)
-
-    def update(self):
-        if self.cur_timer_damage > 0:
-            self.cur_timer_damage -= 1
-
-        swap = False
-        last_x = self.rect.x
-
-        # Если персонаж не пересекается с асфальтом снизу или сбоку, значит он падает
-        if 1 not in (collide := collide_asphalt(self)) and 0 not in collide:
-            if self.down_timer == 0:
-                self.down_vy = 1
-                self.down_timer = HEIGHT
-            if self.down_timer % 3 < 2:
-                self.rect.y += math.ceil(self.down_vy / FPS)
-                self.down_vy += 1
-            self.down_timer -= 1
-            in_fall = True
-        else:
-            self.down_vy = 0
-            self.down_timer = 0
-            in_fall = False
-
-        # Перемещаем персонажа
-        if not self.is_go_left:
-            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
-                self.is_rotate = False
-                if not in_fall:
-                    super().update()
-                self.rect.x += math.ceil(self.vx / FPS)
-                self.absolute_x += math.ceil(self.vx / FPS)
-            self.vx_timer = (self.vx_timer + 1) % 3
-        if self.is_go_left:
-            if (self.down_timer % 3 < 2 and in_fall) or (not in_fall and self.vx_timer % 3 < 2):
-                self.is_rotate = True
-                if not in_fall:
-                    super().update()
-                self.rect.x -= math.ceil(self.vx / FPS)
-                self.absolute_x -= math.ceil(self.vx / FPS)
-            self.vx_timer = (self.vx_timer + 1) % 3
-
-        if self.absolute_x >= self.right_bound:
-            swap = True
-            self.is_go_left = True
-        if self.absolute_x <= self.left_bound:
-            swap = True
-            self.is_go_left = False
-
-        # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
-        # то перемещаем его в самое близкое положение, где он не будет пересекаться с асфальтом
-        if 1 in collide_asphalt(self):
-            delta = self.rect.x - last_x
-            self.rect.x = last_x
-            self.absolute_x += delta
-            if not swap:
-                self.is_go_left = not self.is_go_left
-
-        collide_projectiles = pygame.sprite.spritecollide(self, projectile_group, False)
-        for sprite in collide_projectiles:
-            if pygame.sprite.collide_mask(self, sprite):
-                self.kill()
-                sprite.kill()
-
-
-class Hero(AnimatedSprite):
-    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
-        super().__init__(sheet, columns, rows, *groups)
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
-                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
-        self.counter_books = 0
-        self.health = 100
-        # Установливаем константу как быстро будет происходить смена спрайтов
         self.set_timer(60)
-
-        # Задаем границы для камеры и изменение координат героя при выходе за границы
-        self.lower_bound = 200
-        self.upper_bound = 600
-        self.dx = 0
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
+                                               pos_y * TILE_HEIGHT - self.image.get_height() // 2)
 
         # Начальная скорость, счетчик действий для горизонтального движения
         self.vx = 50
         self.vx_timer = 1
 
-        # Начальная скорость, счетчик действий для прыжка
-        self.jump_vy = 0
-        self.jump_timer = 0
-
         # Начальная скорость, счетчик действий для падения
         self.down_vy = 0
         self.down_timer = 0
 
-        # Частота Снарядов
-        self.projectile_timer = 500
-        self.projectile_current_time = 0
+        # Начальная скорость, счетчик действий для прыжка
+        self.jump_vy = 0
+        self.jump_timer = 0
 
         self.mask = pygame.mask.from_surface(self.image)
 
-    def update(self):
-        keys = pygame.key.get_pressed()
-
+    def update(self, directions):
         motion = False  # Двигался ли герой
-        in_jump, in_fall = False, False   # Что бы нельзя было прыгать в воздухе
+        in_jump, in_fall = False, False  # Что бы нельзя было прыгать в воздухе
 
         # Если идёт "анимация" прыжка
         if self.jump_timer != 0:
@@ -261,38 +163,36 @@ class Hero(AnimatedSprite):
                 self.down_vy += 1
             self.down_timer -= 1
             in_fall = True
+
         else:
             self.down_timer = 0
             self.down_vy = 0
             in_fall = False
 
         # Перемещаем персонажа
-        if keys[pygame.K_RIGHT]:
+        if pygame.K_RIGHT in directions:
             if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
                     (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.is_rotate = False
-                if not in_jump and not in_fall:
-                    super().update()
+                super().update()
                 self.rect.x += math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_LEFT]:
+        if pygame.K_LEFT in directions:
             if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
                     (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.is_rotate = True
-                if not in_jump and not in_fall:
-                    super().update()
+                super().update()
                 self.rect.x -= math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
-        if keys[pygame.K_UP] and not in_jump and not in_fall:
+        if pygame.K_UP in directions and not in_jump and not in_fall:
             motion = True
             self.jump_vy = 125
             self.jump_timer = 2 * self.jump_vy
 
         if not motion and self.cur_frame != 0:
             super().update()
-
         if motion and self.is_rotate:
             self.image = self.frames_lefts[self.cur_frame]
         elif motion and not self.is_rotate:
@@ -302,6 +202,69 @@ class Hero(AnimatedSprite):
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
         if 1 in (collide := collide_asphalt(self)):
             self.rect.x = collide[1]
+            return True
+
+        return False
+
+
+class Enemy(BaseEnemy):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, pos_x, pos_y, *groups)
+        self.absolute_x = pos_x * TILE_WIDTH
+        self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
+        self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
+        self.is_go_left = True
+
+        self.timer_damage = 200
+        self.cur_timer_damage = 0
+
+    def update(self, *args):
+        if self.cur_timer_damage > 0:
+            self.cur_timer_damage -= 1
+
+        swap = False
+
+        collide = super().update([pygame.K_LEFT if self.is_go_left else pygame.K_RIGHT])
+
+        if self.absolute_x >= self.right_bound:
+            swap = True
+            self.is_go_left = True
+        if self.absolute_x <= self.left_bound:
+            swap = True
+            self.is_go_left = False
+
+        if collide and not swap:
+            self.is_go_left = not self.is_go_left
+
+        collide_projectiles = pygame.sprite.spritecollide(self, projectile_group, False)
+        for sprite in collide_projectiles:
+            if pygame.sprite.collide_mask(self, sprite):
+                self.kill()
+                sprite.kill()
+
+
+class Hero(BaseEnemy):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+        super().__init__(sheet, columns, rows, pos_x, pos_y, *groups)
+        self.counter_books = 0
+        self.health = 100
+
+        # Задаем границы для камеры и изменение координат героя при выходе за границы
+        self.lower_bound = 200
+        self.upper_bound = 600
+        self.dx = 0
+
+        # Частота Снарядов
+        self.projectile_timer = 500
+        self.projectile_current_time = 0
+
+    def update(self, *args):
+        keys = pygame.key.get_pressed()
+        directions = []
+        for key in [pygame.K_RIGHT, pygame.K_LEFT, pygame.K_UP]:
+            if keys[key]:
+                directions.append(key)
+        super().update(directions)
 
         # Проверка пересечения с книгами
         books = pygame.sprite.spritecollide(self, book_group, False)
@@ -457,12 +420,17 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
-def active_pause_menu():
+def active_pause_menu(image=None):
     # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
     # чтобы в случае сохранения сохранить его в качестве превью
-    preview_to_save = pygame.transform.scale(screen, (175, 110))
-    screen.blit(load_image(r'Background/Dark.png'), (0, 0))
-    bg = screen.copy()
+    if image is None:
+        preview_to_save = pygame.transform.scale(screen, (175, 110))
+        screen.blit(load_image(r'Background/Dark.png'), (0, 0))
+        bg = screen.copy()
+    else:
+        preview_to_save = pygame.transform.scale(image, (175, 110))
+        image.blit(load_image(r'Background/Dark.png'), (0, 0))
+        bg = image.copy()
 
     # Создаём кнопки
     release_pause_btn = pygame_gui.elements.UIButton(
@@ -513,10 +481,10 @@ def active_pause_menu():
                         else:
 
                             set_bus_to_hell()
-                            return pygame.QUIT
+                            raise ExitToMenuException
 
                     else:
-                        return pygame.QUIT
+                        raise ExitToMenuException
 
                 if event_pause.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     # Попытка выхода из игры - запрашиваем подтверждение
@@ -581,6 +549,53 @@ def active_pause_menu():
     return
 
 
+def show_dialog(data):
+    """Принимает список кортежей [(Имя говорящего, фраза)]"""
+    bg = screen.copy()
+
+    ln = len(data)
+    cur_phrase = 0
+    text_box = pygame_gui.elements.ui_text_box.UITextBox(
+            relative_rect=pygame.Rect(100, 420, 600, 140),
+            manager=UIManager,
+            html_text='',
+            object_id='#dialog_text_box'
+        )
+
+    while True:
+        dialog_time_delta = clock.tick() / 1000
+        for event_dialog in pygame.event.get():
+            if event_dialog.type == pygame.QUIT or (event_dialog.type == pygame.KEYDOWN and
+                                                    event_dialog.key == pygame.K_ESCAPE):
+                x = screen.copy()
+                text_box.hide()
+                active_pause_menu(x)
+                text_box.show()
+
+            elif event_dialog.type == pygame.MOUSEBUTTONDOWN:
+                if event_dialog.button == pygame.BUTTON_WHEELUP:
+                    cur_phrase = max(0, cur_phrase - 1)
+                elif event_dialog.button == pygame.BUTTON_LEFT:
+                    cur_phrase += 1
+            elif event_dialog.type == pygame.KEYDOWN and event_dialog.key == pygame.K_SPACE:
+                cur_phrase += 1
+
+            UIManager.process_events(event_dialog)
+
+        if cur_phrase >= ln:
+            text_box.kill()
+            return
+
+        text_box.html_text = "<font color='#5F9EA0'>" + data[cur_phrase][0] + ':</font><br>- ' + \
+                             data[cur_phrase][1]
+        text_box.rebuild()
+
+        UIManager.update(dialog_time_delta)
+        screen.blit(bg, (0, 0))
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+
 def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
@@ -591,6 +606,7 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
     running_game = True
+    a = False
     while running_game:
         game_time_delta = clock.tick() / 1000
 
@@ -600,8 +616,9 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
-                result = active_pause_menu()
-                if result == pygame.QUIT:
+                try:
+                    active_pause_menu()
+                except ExitToMenuException:
                     running_game = False
 
             UIManager.process_events(event_game)
@@ -627,6 +644,19 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         draw_hero_data(hero)
         UIManager.draw_ui(screen)
         pygame.display.flip()
+        if not a:
+            try:
+                show_dialog([('Семен', 'Я с трудом вспоминаю как все начиналось, но те события перевенувшие мою жизнь с ног на голову навсегда врезались в мою память.'),
+                             ('Семен', 'Эти события стали для меня новый жизненной силой. Заставили Жить, а не просто проживать свою молодость.'),
+                             ('Семен', 'Трудно сказать когда именно наступил этот момент. Когда я встретил ее на улице с банальной просьбой помочь собрать книги или когда мы вновь встретились спутся некоторое время'),
+                             ('Семен', 'Но все же история должна быть полной. Поэтому нам следует начать с того самого дня нашего знакомства. '),
+                             ('Семен', 'Лена.'),
+                             ('Семен', 'Солнце только поднималось над горизонтом, я уже шел на учебу.'),
+                             ('Семен', 'Никогда не понимал зачем в такую рань идти на учебу? Первая - Вторая пролетают просто в полусне и практически ничего не воспринимается.'),
+                             ('Семен', 'Впрочем, сейчас главное пережить сессию, а дальше можно продолжать круглосуточно серфить интернет')])
+            except ExitToMenuException:
+                running_game = False
+            a = True
 
     return
 
