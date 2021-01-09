@@ -6,6 +6,7 @@ import math
 import shutil
 import random
 import datetime
+import json
 
 
 class ExitToMenuException(Exception):
@@ -292,7 +293,7 @@ class Hero(BaseEnemy):
         collides = pygame.sprite.spritecollide(self, enemy_group, False)
         for sprite in collides:
             if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
-                self.health -= 5
+                self.health -= 20
                 sprite.cur_timer_damage = sprite.timer_damage
         self.check_bounds()
 
@@ -606,7 +607,8 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
     running_game = True
-    a = False
+    was_dialog = False
+
     while running_game:
         game_time_delta = clock.tick() / 1000
 
@@ -644,7 +646,7 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         draw_hero_data(hero)
         UIManager.draw_ui(screen)
         pygame.display.flip()
-        if not a:
+        if not was_dialog:
             try:
                 show_dialog([('Семен', 'Я с трудом вспоминаю как все начиналось, но те события перевенувшие мою жизнь с ног на голову навсегда врезались в мою память.'),
                              ('Семен', 'Эти события стали для меня новый жизненной силой. Заставили Жить, а не просто проживать свою молодость.'),
@@ -656,7 +658,7 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
                              ('Семен', 'Впрочем, сейчас главное пережить сессию, а дальше можно продолжать круглосуточно серфить интернет')])
             except ExitToMenuException:
                 running_game = False
-            a = True
+            was_dialog = True
 
     return
 
@@ -974,8 +976,17 @@ if __name__ == '__main__':
     # Константа шрифта
     COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
 
+    # Объеденим базовую тему с нужными нами цветами кнопок
+    with open(r'Data\Themes\theme_Base.json', 'r') as base:
+        a = json.load(base)
+    with open(rf'Data\Themes\theme_{CURRENT_THEME}.json', 'r') as colours:
+        b = json.load(colours)
+    with open(r'Data\Themes\temp.json', 'w') as result:
+        json.dump(b | a, result)
+
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
-    UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/theme_{CURRENT_THEME}.json')
+    UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/temp.json')
+
     # Создаём кнопки
     start_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
