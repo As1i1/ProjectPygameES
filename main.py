@@ -556,13 +556,16 @@ def active_pause_menu(image=None):
 
 
 def show_dialog(data):
-    """Принимает список кортежей [(Имя говорящего, фраза)]"""
+    """Принимает список кортежей [(Имя говорящего, фраза, стандартизирование имя говорящего)]"""
     bg = screen.copy()
+    name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
+                   'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
+                   'Semen': '#F5DEB3'}
 
     ln = len(data)
     cur_phrase = 0
     text_box = pygame_gui.elements.ui_text_box.UITextBox(
-        relative_rect=pygame.Rect(50, 490, 700, 110),
+        relative_rect=pygame.Rect(70, 490, 700, 110),
         manager=UIManager,
         html_text='',
         object_id='#dialog_text_box'
@@ -592,13 +595,14 @@ def show_dialog(data):
             text_box.kill()
             return
 
-        text_box.html_text = "<font color='#5F9EA0'>" + data[cur_phrase][0] + ':</font><br>- ' + \
-                             data[cur_phrase][1]
+        text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" +\
+                             data[cur_phrase][0] + ':</font><br>- ' + data[cur_phrase][1]
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
         screen.blit(bg, (0, 0))
         UIManager.draw_ui(screen)
+        screen.blit(load_image(rf'Sprites/{data[cur_phrase][2]}/dialog_preview.png'), (6, 490))
         pygame.display.flip()
 
 
@@ -608,11 +612,21 @@ def play_game():  # TODO Сделать игру:D ага *****; за буква
     camera = Camera()
     bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
     bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
-    hero, hero_pos_x, hero_pos_y, coord_checkpoints = generate_level(load_level('Levels/test_level1.txt'),
-                                                  (all_sprites, hero_group),
-                                                  (bound_group, all_sprites))
+    hero, hero_pos_x, hero_pos_y, coord_checkpoints = \
+        generate_level(load_level('Levels/test_level1.txt'),
+                       (all_sprites, hero_group), (bound_group, all_sprites))
+
     running_game = True
-    cur_dialog = []
+    cur_dialog = [('Алиса', 'Сап.', 'Alisa'),
+                  ('Мику', 'смив', 'Miku'),
+                  ('Лена', 'Бу', 'Lena'),
+                  ('Семен', 'Арргх', 'Semen'),
+                  ('Ольга Дмитриевна', 'ываыва', 'OD'),
+                  ('Славя', 'ываыва', 'Slavya'),
+                  ('Юльяна', 'укеуке', 'Ulyana'),
+                  ('Юля', 'ываааааысмч', 'UVAO'),
+                  ('Женя', 'ываыва', 'Zhenya')]
+
     while running_game:
         game_time_delta = clock.tick() / 1000
 
@@ -650,6 +664,7 @@ def play_game():  # TODO Сделать игру:D ага *****; за буква
         draw_hero_data(hero)
         UIManager.draw_ui(screen)
         pygame.display.flip()
+
         if cur_dialog:
             try:
                 show_dialog(cur_dialog)
