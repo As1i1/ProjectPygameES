@@ -120,6 +120,7 @@ class BaseEnemy(AnimatedSprite):
     def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
         super().__init__(sheet, columns, rows, *groups)
         self.set_timer(60)
+        self.absolute_x = pos_x * TILE_WIDTH
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
                                                pos_y * TILE_HEIGHT - self.image.get_height() // 2)
 
@@ -177,6 +178,7 @@ class BaseEnemy(AnimatedSprite):
                 self.is_rotate = False
                 super().update()
                 self.rect.x += math.ceil(self.vx / FPS)
+                self.absolute_x += math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
         if pygame.K_LEFT in directions:
@@ -184,6 +186,7 @@ class BaseEnemy(AnimatedSprite):
                     (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.is_rotate = True
                 super().update()
+                self.absolute_x -= math.ceil(self.vx / FPS)
                 self.rect.x -= math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
@@ -211,7 +214,6 @@ class BaseEnemy(AnimatedSprite):
 class Enemy(BaseEnemy):
     def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
         super().__init__(sheet, columns, rows, pos_x, pos_y, *groups)
-        self.absolute_x = pos_x * TILE_WIDTH
         self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
         self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
         self.is_go_left = True
@@ -344,8 +346,9 @@ def load_level(filename):
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена
-    hero, pos_x, pos_y, cnt_books = None, None, None, 0
+    # H - герой, a - асфальт, b - книга, E - враг,
+    # i - невидимая стена, c - checkpoint место где герои разговаривают
+    hero, pos_x, pos_y, cnt_books, coord_checkpoints = None, None, None, 0, []
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
@@ -363,8 +366,10 @@ def generate_level(level, hero_groups, asphalt_groups):
                 Bound(x, y, r'Background\Constructions\empty.png', bound_group, invisible_bound)
             if level[y][x] == 'g':
                 Bound(x, y, r'Background\Constructions\ground.jpg', *asphalt_groups)
+            if level[y][x] == 'c':
+                coord_checkpoints.append(x * TILE_WIDTH)
     hero.all_books = cnt_books
-    return hero, pos_x, pos_y
+    return hero, pos_x, pos_y, sorted(coord_checkpoints)
 
 
 def draw_hero_data(hero):
@@ -557,11 +562,11 @@ def show_dialog(data):
     ln = len(data)
     cur_phrase = 0
     text_box = pygame_gui.elements.ui_text_box.UITextBox(
-            relative_rect=pygame.Rect(100, 420, 600, 140),
-            manager=UIManager,
-            html_text='',
-            object_id='#dialog_text_box'
-        )
+        relative_rect=pygame.Rect(50, 490, 700, 110),
+        manager=UIManager,
+        html_text='',
+        object_id='#dialog_text_box'
+    )
 
     while True:
         dialog_time_delta = clock.tick() / 1000
@@ -597,18 +602,17 @@ def show_dialog(data):
         pygame.display.flip()
 
 
-def play_game():            # TODO Сделать игру:D ага *****; за буквами следи;
+def play_game():  # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
     camera = Camera()
     bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
     bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
-    hero, hero_pos_x, hero_pos_y = generate_level(load_level('Levels/test_level1.txt'),
+    hero, hero_pos_x, hero_pos_y, coord_checkpoints = generate_level(load_level('Levels/test_level1.txt'),
                                                   (all_sprites, hero_group),
                                                   (bound_group, all_sprites))
     running_game = True
-    was_dialog = False
-
+    cur_dialog = []
     while running_game:
         game_time_delta = clock.tick() / 1000
 
@@ -646,19 +650,12 @@ def play_game():            # TODO Сделать игру:D ага *****; за 
         draw_hero_data(hero)
         UIManager.draw_ui(screen)
         pygame.display.flip()
-        if not was_dialog:
+        if cur_dialog:
             try:
-                show_dialog([('Семен', 'Я с трудом вспоминаю как все начиналось, но те события перевенувшие мою жизнь с ног на голову навсегда врезались в мою память.'),
-                             ('Семен', 'Эти события стали для меня новый жизненной силой. Заставили Жить, а не просто проживать свою молодость.'),
-                             ('Семен', 'Трудно сказать когда именно наступил этот момент. Когда я встретил ее на улице с банальной просьбой помочь собрать книги или когда мы вновь встретились спутся некоторое время'),
-                             ('Семен', 'Но все же история должна быть полной. Поэтому нам следует начать с того самого дня нашего знакомства. '),
-                             ('Семен', 'Лена.'),
-                             ('Семен', 'Солнце только поднималось над горизонтом, я уже шел на учебу.'),
-                             ('Семен', 'Никогда не понимал зачем в такую рань идти на учебу? Первая - Вторая пролетают просто в полусне и практически ничего не воспринимается.'),
-                             ('Семен', 'Впрочем, сейчас главное пережить сессию, а дальше можно продолжать круглосуточно серфить интернет')])
+                show_dialog(cur_dialog)
             except ExitToMenuException:
                 running_game = False
-            was_dialog = True
+            cur_dialog = []
 
     return
 
@@ -920,7 +917,7 @@ def save_game(page, cell, preview, overwrite=False):
         f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
 
 
-def load_game(path):    # TODO Реализовать загрузку
+def load_game(path):  # TODO Реализовать загрузку
     pass
 
 
