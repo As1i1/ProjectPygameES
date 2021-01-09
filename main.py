@@ -463,7 +463,7 @@ def active_pause_menu(image=None):
     )
 
     pause_activated = True
-    quit_game = False       # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
+    quit_game = False  # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
 
     while pause_activated:
         pause_time_delta = clock.tick() / 1000
@@ -598,8 +598,11 @@ def show_dialog(data):
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
+def get_level_dialog():
+    pass
 
-def play_game():  # TODO Сделать игру:D ага *****; за буквами следи;
+
+def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
     camera = Camera()
@@ -1057,7 +1060,7 @@ if __name__ == '__main__':
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
 
-                        play_game()
+                        play_game(1)
                     if event.ui_element == load_game_btn:
                         show_load_screen()
                     if event.ui_element == show_achievements_btn:
