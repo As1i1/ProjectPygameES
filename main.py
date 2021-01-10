@@ -122,6 +122,7 @@ class BaseEnemy(AnimatedSprite):
         self.absolute_x = pos_x * TILE_WIDTH
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH,
                                                pos_y * TILE_HEIGHT - self.image.get_height() // 2)
+        self.state = True
 
         # Начальная скорость, счетчик действий для горизонтального движения
         self.vx = 50
@@ -201,10 +202,17 @@ class BaseEnemy(AnimatedSprite):
         elif motion and not self.is_rotate:
             self.image = self.frames_rights[self.cur_frame]
 
+        if in_fall or in_jump:
+            self.state = False
+        else:
+            self.state = True
+
         # Если после перемещения, персонаж начинает пересекаться с асфальтом справа или слева,
         # то перемещаем его в самое близкое положение, шде он не будет пересекаться с асфальтом
         if 1 in (collide := collide_asphalt(self)):
+            old_x = self.rect.x
             self.rect.x = collide[1]
+            self.absolute_x += self.rect.x - old_x
             return True
 
         return False
@@ -346,7 +354,7 @@ def load_level(filename):
 
 def generate_level(level, hero_groups, asphalt_groups):
     # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена, c - checkpoint место где герои разговаривают
-    hero, pos_x, pos_y, cnt_books, coord_checkpoints = None, None, None, 0, []
+    hero, pos_x, pos_y, cnt_books, coord_checkpoints, cur_checkpoint, exit_pos = None, None, None, 0, [], 0, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
@@ -365,9 +373,12 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'g':
                 Bound(x, y, r'Background\Constructions\ground.jpg', *asphalt_groups)
             if level[y][x] == 'c':
-                coord_checkpoints.append(x * TILE_WIDTH)
+                coord_checkpoints.append((cur_checkpoint + 1, x * TILE_WIDTH))
+                cur_checkpoint += 1
+            if level[y][x] == 'e':
+                exit_pos = TILE_WIDTH * x
     hero.all_books = cnt_books
-    return hero, pos_x, pos_y, sorted(coord_checkpoints)
+    return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
 
 def draw_hero_data(hero):
@@ -590,8 +601,11 @@ def show_dialog(data):
             text_box.kill()
             return
 
-        text_box.html_text = "<font color='#5F9EA0'>" + data[cur_phrase][0] + ':</font><br>- ' + \
-                             data[cur_phrase][1]
+        if data[cur_phrase][0] == "Комм":
+            text_box.html_text = data[cur_phrase][1]
+        else:
+            text_box.html_text = "<font color='#5F9EA0'>" + data[cur_phrase][0] + ':</font><br>- ' + \
+                                 data[cur_phrase][1]
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
@@ -600,13 +614,116 @@ def show_dialog(data):
         pygame.display.flip()
 
 
-def get_level_dialog():
-    pass
+def get_level_dialog(level):
+    dialogs = []
+    file_story = open(fr"Data\Story\Level{level}\story.txt", "r", encoding='utf-8').readlines()
+    tmp_dialogs = []
+    for i in file_story:
+        i = i.strip()
+        if i == '!next!':
+            dialogs.append(tmp_dialogs)
+            tmp_dialogs = []
+        else:
+            tmp_dialogs.append((i[0:i.find('$$') - 1], i[i.find('$$') + 2: -1]))
+    return dialogs
+
+
+def level_1():
+    camera = Camera()
+    bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', [all_sprites, background_group])
+    bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', [all_sprites, background_group])
+    hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/test_level1'),
+                                                                     (all_sprites, hero_group),
+                                                                     (bound_group, all_sprites))
+
+    without_enemies_group = pygame.sprite.Group()
+    for sprite in all_sprites.sprites():
+        if not isinstance(sprite, Enemy):
+            without_enemies_group.add(sprite)
+
+    tmp = [2, 3, 1, 4, 5]
+    queue_dialogs = [0 for i in range(len(tmp))]
+    dialogs_text = get_level_dialog(1)
+    for cnt, x in coord_checkpoints:
+        queue_dialogs[tmp.index(cnt)] = x
+
+    running_game = True
+    cur_dialog = []
+    dialog_number = 0
+    while running_game:
+        game_time_delta = clock.tick() / 1000
+
+        if hero.health <= 0:
+            return "death"
+
+        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == dialog_number:
+            return "passed"
+
+        print(exit_pos)
+        if dialog_number < len(dialogs_text) and hero.state and \
+                hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
+            if dialog_number >= 3 and hero.counter_books == hero.all_books:
+                cur_dialog = dialogs_text[dialog_number]
+                dialog_number += 1
+            elif dialog_number <= 2:
+                cur_dialog = dialogs_text[dialog_number]
+                dialog_number += 1
+
+        if dialog_number <= 2 or enemy_group.sprites():
+            for sprite in projectile_group.sprites():
+                sprite.kill()
+
+        for event_game in pygame.event.get():
+            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                  event_game.key == pygame.K_ESCAPE):
+                try:
+                    active_pause_menu()
+                except ExitToMenuException:
+                    running_game = False
+
+            UIManager.process_events(event_game)
+            all_sprites.update()
+
+        UIManager.update(game_time_delta)
+        all_sprites.update()
+
+        # Движение BackGround`а (бесконечный фон)
+        move_background(bg_first, bg_second)
+
+        camera.update(hero)
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        for sprite in invisible_bound:
+            camera.apply(sprite)
+
+        screen.fill((0, 0, 0))
+
+        if dialog_number <= 2:
+            without_enemies_group.draw(screen)
+            hero.health = 100
+        else:
+            all_sprites.draw(screen)
+
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+        if cur_dialog:
+            try:
+                show_dialog(cur_dialog)
+            except ExitToMenuException:
+                running_game = False
+            cur_dialog = []
+
+        if dialog_number > 2:
+            draw_hero_data(hero)
+    return
 
 
 def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
+    if level == 1:
+        return level_1()
     camera = Camera()
     bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
     bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
@@ -1054,6 +1171,7 @@ if __name__ == '__main__':
                     if event.ui_element == start_game_btn:
                         # Создание спарйт-групп
                         bound_group = pygame.sprite.Group()
+                        background_group = pygame.sprite.Group()
                         hero_group = pygame.sprite.Group()
                         enemy_group = pygame.sprite.Group()
                         whero_group = pygame.sprite.Group()
