@@ -247,6 +247,7 @@ class Enemy(BaseEnemy):
 class Hero(BaseEnemy):
     def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
         super().__init__(sheet, columns, rows, pos_x, pos_y, *groups)
+        self.set_timer(30)
         self.counter_books = 0
         self.health = 100
 
@@ -351,7 +352,7 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'a':
                 Bound(x, y, r'Background/Constructions/asphalt.png', *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(load_image(r"Sprites\Semen\Semen-test2.png"), 4, 1, x, y, *hero_groups)
+                hero = Hero(load_image(r"Sprites\Semen\Semen_variant2.1.png"), 8, 2, x, y, *hero_groups)
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
@@ -597,6 +598,7 @@ def show_dialog(data):
         screen.blit(bg, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
+
 
 def get_level_dialog():
     pass
