@@ -1,0 +1,11 @@
+1
+2 3 1 4 5
+Hero: Sprites\Semen\Semen_variant2.1.png
+Lena:
+Enemy: Sprites\Semen\Semen-test2.png
+Background: Background\city_background_sunset — копия.png
+Element: Background\Constructions\redbook.png
+Bound: Background/Constructions/asphalt.png
+InvisibleBound: Background\Constructions\empty.png
+Projectile: Background\Constructions\bag.png
+BigBound: Background\Constructions\ground.jpg
