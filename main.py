@@ -318,7 +318,7 @@ class Lena(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y, *groups):
         super().__init__(*groups)
         self.image = image
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, 0)
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT - self.image.get_height())
         self.is_flip = True
 
     def fall(self):
@@ -639,11 +639,12 @@ def show_dialog(data):
             text_box.kill()
             return
 
-        if data[cur_phrase][0] == "Комм":
+        if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум":
             text_box.html_text = data[cur_phrase][1]
         else:
             text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" +\
                                  data[cur_phrase][0] + ':</font><br>- ' + data[cur_phrase][1]
+            screen.blit(load_image(rf'Sprites/{data[cur_phrase][2]}/dialog_preview.png'), (6, 490))
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
@@ -663,7 +664,7 @@ def get_level_dialog(level):
             tmp_dialogs = []
         else:
             i = i.split(' $$ ')
-            tmp_dialogs.append((i[1], i[2]))
+            tmp_dialogs.append((i[1], i[2], i[0]))
     return dialogs
 
 
@@ -698,7 +699,6 @@ def level_1_play_game(tmp, load_flag=False):
 
         if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == dialog_number:
             return 1, "passed"
-
 
         if dialog_number < len(dialogs_text) and hero.state and \
                 hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
@@ -758,7 +758,6 @@ def level_1_play_game(tmp, load_flag=False):
         if dialog_number == 3:
             draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
             pygame.display.flip()
-
 
     return 1, "not passed"
 
@@ -1124,6 +1123,13 @@ def check_verdict(verdict):
     return cur_level, go_next_level
 
 
+def sum_dict(a, b):
+    c = a
+    for key, value in b.items():
+        c[key] = value
+    return c
+
+
 if __name__ == '__main__':
     # Разнообразие в студию!
     CURRENT_THEME = random.choice(
@@ -1193,7 +1199,7 @@ if __name__ == '__main__':
     with open(rf'Data\Themes\theme_{CURRENT_THEME}.json', 'r') as colours:
         b = json.load(colours)
     with open(r'Data\Themes\temp.json', 'w') as result:
-        json.dump(b | a, result)
+        json.dump(sum_dict(b, a), result)
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
     UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/temp.json')
