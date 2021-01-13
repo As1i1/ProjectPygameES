@@ -6,6 +6,7 @@ import math
 import shutil
 import random
 import datetime
+import json
 
 
 class ExitToMenuException(Exception):
@@ -245,6 +246,7 @@ class Enemy(BaseEnemy):
 
         if collide and not swap:
             self.is_go_left = not self.is_go_left
+
         collide_projectiles = pygame.sprite.spritecollide(self, projectile_group, False)
         for sprite in collide_projectiles:
             if pygame.sprite.collide_mask(self, sprite):
@@ -508,7 +510,7 @@ def active_pause_menu(image=None):
     )
 
     pause_activated = True
-    quit_game = False  # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
+    quit_game = False       # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
 
     while pause_activated:
         pause_time_delta = clock.tick() / 1000
@@ -598,13 +600,16 @@ def active_pause_menu(image=None):
 
 
 def show_dialog(data):
-    """Принимает список кортежей [(Имя говорящего, фраза)]"""
+    """Принимает список кортежей [(Имя говорящего, фраза, стандартизирование имя говорящего)]"""
     bg = screen.copy()
+    name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
+                   'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
+                   'Semen': '#F5DEB3'}
 
     ln = len(data)
     cur_phrase = 0
     text_box = pygame_gui.elements.ui_text_box.UITextBox(
-        relative_rect=pygame.Rect(50, 490, 700, 110),
+        relative_rect=pygame.Rect(70, 490, 700, 110),
         manager=UIManager,
         html_text='',
         object_id='#dialog_text_box'
@@ -637,8 +642,8 @@ def show_dialog(data):
         if data[cur_phrase][0] == "Комм":
             text_box.html_text = data[cur_phrase][1]
         else:
-            text_box.html_text = "<font color='#5F9EA0'>" + data[cur_phrase][0] + ':</font><br>- ' + \
-                                 data[cur_phrase][1]
+            text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" +\
+                                 data[cur_phrase][0] + ':</font><br>- ' + data[cur_phrase][1]
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
@@ -811,6 +816,7 @@ def play_game(level):  # TODO Сделать игру:D ага *****; за бу�
         draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
         UIManager.draw_ui(screen)
         pygame.display.flip()
+
         if cur_dialog:
             try:
                 show_dialog(cur_dialog)
@@ -1181,8 +1187,17 @@ if __name__ == '__main__':
         if line.startswith('cur_level'):
             CUR_LEVEL = int(line.split(':')[1])
 
+    # Объеденим базовую тему с нужными нами цветами кнопок
+    with open(r'Data\Themes\theme_Base.json', 'r') as base:
+        a = json.load(base)
+    with open(rf'Data\Themes\theme_{CURRENT_THEME}.json', 'r') as colours:
+        b = json.load(colours)
+    with open(r'Data\Themes\temp.json', 'w') as result:
+        json.dump(b | a, result)
+
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
-    UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/theme_{CURRENT_THEME}.json')
+    UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/temp.json')
+
     # Создаём кнопки
     start_game_btn = pygame_gui.elements.UIButton(
         relative_rect=pygame.rect.Rect((46, 53), (300, 60)),
