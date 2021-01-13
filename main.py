@@ -70,7 +70,7 @@ class Camera:
 class Bound(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, bound_image, *groups):
         super().__init__(*groups)
-        self.image = load_image(bound_image)
+        self.image = bound_image
         self.rect = self.image.get_rect().move(
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
@@ -78,7 +78,7 @@ class Bound(pygame.sprite.Sprite):
 class Book(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y, *groups):
         super().__init__(*groups)
-        self.image = load_image(image)
+        self.image = image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -86,7 +86,7 @@ class Book(pygame.sprite.Sprite):
 class BackGround(pygame.sprite.Sprite):
     def __init__(self, pos_x, background_image, *groups):
         super().__init__(*groups)
-        self.image = load_image(background_image)
+        self.image = background_image
         self.rect = self.image.get_rect().move(pos_x, 0)
         self.mask = pygame.mask.from_surface(self.image)
 
@@ -94,7 +94,7 @@ class BackGround(pygame.sprite.Sprite):
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, x, y, sprite, route, *groups):
         super().__init__(*groups)
-        self.image = load_image(sprite)
+        self.image = sprite
         self.rect = self.image.get_rect().move(x, y)
         self.route = route
         self.vx = 100
@@ -321,9 +321,16 @@ class Lena(pygame.sprite.Sprite):
 
     def fall(self):
         while not pygame.sprite.spritecollideany(self, bound_group):
-            print(pygame.sprite.spritecollideany(self, bound_group))
             self.rect.y += 1
         self.rect.y -= 1
+
+    def update(self, *args, **kwargs):
+        if args and isinstance(args[0], Hero):
+            hero = args[0]
+            if self.rect.x + self.rect.w < hero.rect.x and not self.is_flip:
+                self.flip_image()
+            if self.rect.x > hero.rect.x + hero.rect.w and self.is_flip:
+                self.flip_image()
 
     def change_pos(self, camera, x, y):
         """Добавляет к координате x, y, Параметр camera показывает должен ли персонаж в это время находится в кадре"""
@@ -384,33 +391,33 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'a':
                 Bound(x, y, DICTIONARY_SPITES['Bound'], *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(load_image(DICTIONARY_SPITES['Hero']), 8, 2, x, y, *hero_groups)
+                hero = Hero(DICTIONARY_SPITES['Hero'], 8, 2, x, y, *hero_groups)
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
                 Book(DICTIONARY_SPITES['Element'], x, y, all_sprites, book_group)
             if level[y][x] == "E":
-                Enemy(load_image(DICTIONARY_SPITES['Enemy']), 4, 1, x, y,
+                Enemy(DICTIONARY_SPITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
             if level[y][x] == 'i':
                 Bound(x, y, DICTIONARY_SPITES['InvisibleBound'], bound_group, invisible_bound)
             if level[y][x] == 'g':
-                Bound(x, y, r'Background\Constructions\ground.jpg', *asphalt_groups)
+                Bound(x, y, DICTIONARY_SPITES['BigBound'], *asphalt_groups)
             if level[y][x] == 'c':
                 coord_checkpoints.append((cur_checkpoint + 1, x * TILE_WIDTH))
                 cur_checkpoint += 1
             if level[y][x] == 'e':
                 exit_pos = TILE_WIDTH * x
             if level[y][x] == 'L':
-                Lena(load_image(DICTIONARY_SPITES['Lena']), x, y, whero_group, all_sprites)
+                Lena(DICTIONARY_SPITES['Lena'], x, y, whero_group, all_sprites)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
 
-def draw_hero_data(hero):
-    text = COUNTER_BOOKS_FONT.render(f"Собрано книг: {hero.counter_books}/{hero.all_books}, "
-                                     f"{hero.health}", True, (125, 0, 0))
-    screen.blit(text, (0, 0))
+def draw_text_data(text):
+    for i in range(len(text)):
+        cur_text = COUNTER_BOOKS_FONT.render(text[i], True, (125, 0, 0))
+        screen.blit(cur_text, (0, i * 35))
 
 
 def terminate():
@@ -642,7 +649,7 @@ def show_dialog(data):
 
 def get_level_dialog(level):
     dialogs = []
-    file_story = open(fr"Data\Story\Level{level}\story.txt", "r", encoding='utf-8').readlines()
+    file_story = open(fr"Data\Story\Level{level}\story", "r", encoding='utf-8').readlines()
     tmp_dialogs = []
     for i in file_story:
         i = i.strip()
@@ -655,7 +662,7 @@ def get_level_dialog(level):
     return dialogs
 
 
-def level_1_play_game(tmp):
+def level_1_play_game(tmp, load_flag=False):
     camera = Camera()
     bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
     bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
@@ -682,18 +689,11 @@ def level_1_play_game(tmp):
         game_time_delta = clock.tick() / 1000
 
         if hero.health <= 0:
-            return "death"
+            return 1, "death"
 
         if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == dialog_number:
-            return "passed"
+            return 1, "passed"
 
-        """Здесь может быть ваш if))) Для сохранения"""
-
-        for sprite in whero_group.sprites():
-            if sprite.rect.x + sprite.rect.w < hero.rect.x and not sprite.is_flip:
-                sprite.flip_image()
-            if sprite.rect.x > hero.rect.x + hero.rect.w and sprite.is_flip:
-                sprite.flip_image()
 
         if dialog_number < len(dialogs_text) and hero.state and \
                 hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
@@ -705,8 +705,7 @@ def level_1_play_game(tmp):
                 dialog_number += 1
 
         if dialog_number <= 2 or not enemy_group.sprites():
-            for sprite in projectile_group.sprites():
-                sprite.kill()
+            hero.projectile_current_time = 100
 
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
@@ -752,9 +751,11 @@ def level_1_play_game(tmp):
             cur_dialog = []
 
         if dialog_number == 3:
-            draw_hero_data(hero)
+            draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
             pygame.display.flip()
-    return
+
+
+    return 1, "not passed"
 
 
 def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
@@ -807,7 +808,7 @@ def play_game(level):  # TODO Сделать игру:D ага *****; за бу�
 
         all_sprites.draw(screen)
         hero_group.draw(screen)
-        draw_hero_data(hero)
+        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
         UIManager.draw_ui(screen)
         pygame.display.flip()
         if cur_dialog:
@@ -1101,6 +1102,22 @@ def set_bus_to_hell():
     image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
 
 
+def check_verdict(verdict):
+    # Проверка как закончил уровень игрок
+    if verdict[1] == 'passed':
+        go_next_level = True
+        cur_level = verdict[0] + 1
+    elif verdict[1] == 'death':
+        cur_level = verdict[0]
+        # вот тут нужно предложить ему выбор попробовать снова пройти уровень или загрузиться
+    elif Verdict[1] == 'not passed':
+        cur_level = verdict[0]
+        # Хз что тут делать
+    if cur_level > MAX_LEVEL:
+        go_next_level = False
+    return cur_level, go_next_level
+
+
 if __name__ == '__main__':
     # Разнообразие в студию!
     CURRENT_THEME = random.choice(
@@ -1115,16 +1132,16 @@ if __name__ == '__main__':
         ['Pioneer']  # 0.1%
     )
 
-    DICTIONARY_SPITES = {'Hero': r'Sprites\Semen\Semen_variant2.1.png',
-                         'Enemy': r'Sprites\Semen\Semen-test2.png',
-                         'Background': r'Background\city_background_sunset — копия.png',
-                         'Element': r'Background\Constructions\redbook.png',
-                         'Bound': r'Background/Constructions/asphalt.png',
-                         'InvisibleBound': r'Background\Constructions\empty.png',
-                         'Projectile': r'Background\Constructions\bag.png',
-                         'BigBound': r'Background\Constructions\ground.jpg',
+    DICTIONARY_SPITES = {'Hero': load_image(r'Sprites\Semen\Semen_variant2.1.png'),
+                         'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
+                         'Background': load_image(r'Background\city_background_sunset — копия.png'),
+                         'Element': load_image(r'Background\Constructions\redbook.png'),
+                         'Bound': load_image(r'Background/Constructions/asphalt.png'),
+                         'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
+                         'Projectile': load_image(r'Background\Constructions\bag.png'),
+                         'BigBound': load_image(r'Background\Constructions\ground.jpg'),
                          'Alisa': r'',
-                         'Lena': r'Sprites\Lena\Lena_spite_state_pos.png',
+                         'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                          'Miku': r'',
                          'Ulyana': r'',
                          'Slavya': r'',
@@ -1150,6 +1167,19 @@ if __name__ == '__main__':
     TILE_WIDTH, TILE_HEIGHT = 50, 50
     # Константа шрифта
     COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
+
+    # Считывание данных файла прохождения (data.txt) и заполение данных
+    FlagCoNextLevel = False
+    MAX_LEVEL = None
+    CUR_LEVEL = None
+    START_LEVEL = 1
+    lines = open('data.txt', 'r', encoding='utf-8').readlines()
+    for line in lines:
+        line = line.strip()
+        if line.startswith('max_level'):
+            MAX_LEVEL = int(line.split(':')[1])
+        if line.startswith('cur_level'):
+            CUR_LEVEL = int(line.split(':')[1])
 
     # Создаём менеджер интерфейса с темой для красивого отображения элементов
     UIManager = pygame_gui.UIManager(SIZE, rf'Data/Themes/theme_{CURRENT_THEME}.json')
@@ -1184,6 +1214,9 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
 
     while running:
+        if FlagCoNextLevel:
+            play_game(CUR_LEVEL)
+            CUR_LEVEL, FlagCoNextLevel = check_verdict(Verdict)
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1239,7 +1272,8 @@ if __name__ == '__main__':
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
 
-                        play_game(1)
+                        Verdict = play_game(START_LEVEL)
+                        CUR_LEVEL, FlagCoNextLevel = check_verdict(Verdict)
                     if event.ui_element == load_game_btn:
                         show_load_screen()
                     if event.ui_element == show_achievements_btn:
@@ -1262,5 +1296,7 @@ if __name__ == '__main__':
         screen.blit(image_menu, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
+
+    # Обновление файла data.txt
 
     terminate()
