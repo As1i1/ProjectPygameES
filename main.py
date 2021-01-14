@@ -639,6 +639,8 @@ def show_dialog(data):
             text_box.kill()
             return
 
+        screen.blit(bg, (0, 0))
+
         if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум":
             text_box.html_text = data[cur_phrase][1]
         else:
@@ -648,7 +650,6 @@ def show_dialog(data):
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
-        screen.blit(bg, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
@@ -668,13 +669,31 @@ def get_level_dialog(level):
     return dialogs
 
 
-def level_1_play_game(tmp, load_flag=False):
+def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
     camera = Camera()
     bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
     bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-    hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
-                                                                               (all_sprites, hero_group),
-                                                                               (bound_group, all_sprites))
+    if load_flag:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+        with open(load_data, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+            for line in lines:
+                pass
+    else:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+
+        queue_dialogs = [0 for i in range(len(tmp))]
+        dialogs_text = get_level_dialog(1)
+        for cnt, x in coord_checkpoints:
+            queue_dialogs[tmp.index(cnt)] = x
+
+        cur_dialog = []
+        dialog_number = 0
+
     for sprite in whero_group.sprites():
         sprite.fall()
 
@@ -683,14 +702,7 @@ def level_1_play_game(tmp, load_flag=False):
         if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
             without_enemies_and_books_group.add(sprite)
 
-    queue_dialogs = [0 for i in range(len(tmp))]
-    dialogs_text = get_level_dialog(1)
-    for cnt, x in coord_checkpoints:
-        queue_dialogs[tmp.index(cnt)] = x
-
     running_game = True
-    cur_dialog = []
-    dialog_number = 0
     while running_game:
         game_time_delta = clock.tick() / 1000
 
