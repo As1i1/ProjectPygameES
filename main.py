@@ -266,11 +266,19 @@ class Hero(BaseEnemy):
         self.upper_bound = 600
         self.dx = 0
 
+        self.is_hitted = False  # Для отображение красного эффекта по бокам
+        self.hit_timer = 0
+
         # Частота Снарядов
         self.projectile_timer = 500
         self.projectile_current_time = 0
 
     def update(self, *args):
+        if self.hit_timer == 0:
+            self.is_hitted = False
+        else:
+            self.hit_timer -= 1
+
         keys = pygame.key.get_pressed()
         directions = []
         for key in [pygame.K_RIGHT, pygame.K_LEFT, pygame.K_UP]:
@@ -280,6 +288,7 @@ class Hero(BaseEnemy):
 
         # Выпускание снаряда
         if keys[pygame.K_SPACE] and self.projectile_current_time == 0:
+            audio.make_sound(2)
             if self.is_rotate:
                 Projectile(self.rect.x, self.rect.y + 10,
                            DICTIONARY_SPITES['Projectile'], 'Left',
@@ -297,6 +306,9 @@ class Hero(BaseEnemy):
         collides = pygame.sprite.spritecollide(self, enemy_group, False)
         for sprite in collides:
             if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
+                audio.make_sound(3)
+                self.is_hitted = True
+                self.hit_timer = 10
                 self.health -= 20
                 sprite.cur_timer_damage = sprite.timer_damage
         self.check_bounds()
@@ -306,6 +318,7 @@ class Hero(BaseEnemy):
         books = pygame.sprite.spritecollide(self, book_group, False)
         for book in books:
             if pygame.sprite.collide_mask(self, book):
+                audio.make_sound(4)
                 self.counter_books += 1
                 book.kill()
 
@@ -344,6 +357,37 @@ class Lena(pygame.sprite.Sprite):
         self.is_flip = not self.is_flip
 
 
+class HitEffect(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(hit)
+        self.image = DICTIONARY_SPITES['HitEffect']
+        self.rect = self.image.get_rect().move(0, 0)
+
+
+class AudioManager:
+    def __init__(self):
+        # Загружаем звуковые эффекты
+        self.sounds = {
+            1: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\button_hovered.wav'),
+            2: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\projectile_sound.wav'),
+            3: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\hit.wav'),
+            4: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\collect_book.wav')
+        }
+
+    @staticmethod
+    def play_music(music_file_name):
+        pygame.mixer.music.load(rf'Data\Audio\Music\{music_file_name}')
+        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.play(-1)
+
+    def make_sound(self, sound_id):
+        self.sounds[sound_id].play()
+
+    @staticmethod
+    def stop_music():
+        pygame.mixer.music.stop()
+
+
 def collide_asphalt(sprite):
     """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
         0, если персонаж пересекается с асфальтом снизу,
@@ -380,7 +424,7 @@ def load_image(name, colorkey=None, directory='data'):
 def load_level(filename):
     filename = "data/" + filename
     with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
+        level_map = [map_line.strip() for map_line in mapFile]
     max_width = max(map(len, level_map))
     return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
@@ -522,6 +566,8 @@ def active_pause_menu(image=None):
             # Закрываем игру или возвращаем константу, которая даст сигнал о выходе в меню,
             # в зависимости от подтверждённого диалога (что сделать нам помогает quit_game)
             if event_pause.type == pygame.USEREVENT:
+                if event_pause.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
+                    audio.make_sound(1)
                 if event_pause.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
                                   exit_to_menu_btn, exit_from_pause_btn])
@@ -531,9 +577,11 @@ def active_pause_menu(image=None):
                         else:
 
                             set_bus_to_hell()
+                            audio.play_music('Main_theme.mp3')
                             raise ExitToMenuException
 
                     else:
+                        audio.play_music('Main_theme.mp3')
                         raise ExitToMenuException
 
                 if event_pause.user_type == pygame_gui.UI_BUTTON_PRESSED:
@@ -639,6 +687,8 @@ def show_dialog(data):
             text_box.kill()
             return
 
+        screen.blit(bg, (0, 0))
+
         if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум":
             text_box.html_text = data[cur_phrase][1]
         else:
@@ -648,7 +698,6 @@ def show_dialog(data):
         text_box.rebuild()
 
         UIManager.update(dialog_time_delta)
-        screen.blit(bg, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
@@ -669,9 +718,10 @@ def get_level_dialog(level):
 
 
 def level_1_play_game(tmp, load_flag=False):
+    audio.play_music('Level1_theme.mp3')
     camera = Camera()
-    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], all_sprites, background_group)
+    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], all_sprites, background_group)
     hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
                                                                                (all_sprites, hero_group),
                                                                                (bound_group, all_sprites))
@@ -683,7 +733,7 @@ def level_1_play_game(tmp, load_flag=False):
         if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
             without_enemies_and_books_group.add(sprite)
 
-    queue_dialogs = [0 for i in range(len(tmp))]
+    queue_dialogs = [0] * len(tmp)
     dialogs_text = get_level_dialog(1)
     for cnt, x in coord_checkpoints:
         queue_dialogs[tmp.index(cnt)] = x
@@ -745,6 +795,9 @@ def level_1_play_game(tmp, load_flag=False):
             hero.collide_books()
             all_sprites.draw(screen)
 
+        if hero.is_hitted:
+            hit.draw(screen)
+
         UIManager.draw_ui(screen)
         if dialog_number != 3:
             pygame.display.flip()
@@ -766,62 +819,9 @@ def play_game(level):  # TODO Сделать игру:D ага *****; за бу�
     """Запуск игры (игрового цикла)"""
 
     if level == 1:
-        lines = open(r'Data\Levels\data_level1', 'r', encoding='utf-8').readlines()
-        queue = list(map(int, lines[1].strip().split()))
+        story_lines = open(r'Data\Levels\data_level1', 'r', encoding='utf-8').readlines()
+        queue = list(map(int, story_lines[1].strip().split()))
         return level_1_play_game(queue)
-    camera = Camera()
-    bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
-    bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
-    hero, hero_pos_x, hero_pos_y, coord_checkpoints = generate_level(load_level('Levels/test_level1.txt'),
-                                                                     (all_sprites, hero_group),
-                                                                     (bound_group, all_sprites))
-    running_game = True
-    cur_dialog = []
-    while running_game:
-        game_time_delta = clock.tick() / 1000
-
-        if hero.health <= 0:
-            return
-
-        for event_game in pygame.event.get():
-            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                  event_game.key == pygame.K_ESCAPE):
-                try:
-                    active_pause_menu()
-                except ExitToMenuException:
-                    running_game = False
-
-            UIManager.process_events(event_game)
-            all_sprites.update()
-
-        UIManager.update(game_time_delta)
-        all_sprites.update()
-        hero.collide_books()
-
-        # Движение BackGround`а (бесконечный фон)
-        move_background(bg_first, bg_second)
-
-        camera.update(hero)
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
-        for sprite in invisible_bound:
-            camera.apply(sprite)
-
-        screen.fill((0, 0, 0))
-
-        all_sprites.draw(screen)
-        hero_group.draw(screen)
-        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
-        UIManager.draw_ui(screen)
-        pygame.display.flip()
-
-        if cur_dialog:
-            try:
-                show_dialog(cur_dialog)
-            except ExitToMenuException:
-                running_game = False
-            cur_dialog = []
 
     return
 
@@ -1109,25 +1109,25 @@ def set_bus_to_hell():
 
 def check_verdict(verdict):
     # Проверка как закончил уровень игрок
+    go_next_level = False
+    cur_level = verdict[0]
     if verdict[1] == 'passed':
         go_next_level = True
         cur_level = verdict[0] + 1
     elif verdict[1] == 'death':
         cur_level = verdict[0]
         # вот тут нужно предложить ему выбор попробовать снова пройти уровень или загрузиться
-    elif Verdict[1] == 'not passed':
+    elif verdict[1] == 'not passed':
         cur_level = verdict[0]
-        # Хз что тут делать
-    if cur_level > MAX_LEVEL:
-        go_next_level = False
+        # Фз что тут делать
     return cur_level, go_next_level
 
 
-def sum_dict(a, b):
-    c = a
-    for key, value in b.items():
-        c[key] = value
-    return c
+def sum_dict(first_dict, second_dict):
+    union_dict = first_dict
+    for key, value in second_dict.items():
+        union_dict[key] = value
+    return union_dict
 
 
 if __name__ == '__main__':
@@ -1148,10 +1148,11 @@ if __name__ == '__main__':
                          'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
                          'Background': load_image(r'Background\city_background_sunset — копия.png'),
                          'Element': load_image(r'Background\Constructions\redbook.png'),
-                         'Bound': load_image(r'Background/Constructions/asphalt.png'),
+                         'Bound': load_image(r'Background\Constructions\asphalt.png'),
                          'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
                          'Projectile': load_image(r'Background\Constructions\bag.png'),
                          'BigBound': load_image(r'Background\Constructions\ground.jpg'),
+                         'HitEffect': load_image(r'Background\Hit_effect.png'),
                          'Alisa': r'',
                          'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                          'Miku': r'',
@@ -1167,6 +1168,7 @@ if __name__ == '__main__':
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
     screen = pygame.display.set_mode(SIZE)
+    audio = AudioManager()
 
     # Список достижений [(имя изображения, имя открытой напдиси, имя закрытой надписи,
     #                                                            получено/не получено)]
@@ -1181,10 +1183,11 @@ if __name__ == '__main__':
     COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
 
     # Считывание данных файла прохождения (data.txt) и заполение данных
-    FlagCoNextLevel = False
+    FlagGoNextLevel = False
     MAX_LEVEL = None
     CUR_LEVEL = None
     START_LEVEL = 1
+
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
         line = line.strip()
@@ -1231,13 +1234,17 @@ if __name__ == '__main__':
 
     running = True
     bus_to_hell = False
+    Verdict = (None, None)
 
     clock = pygame.time.Clock()
 
+    # Включаем музыку
+    audio.play_music('Main_theme.mp3')
+
     while running:
-        if FlagCoNextLevel:
+        if FlagGoNextLevel:
             play_game(CUR_LEVEL)
-            CUR_LEVEL, FlagCoNextLevel = check_verdict(Verdict)
+            CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1257,6 +1264,7 @@ if __name__ == '__main__':
                     if event.user_type == pygame_gui.UI_BUTTON_ON_UNHOVERED:
                         image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_normal.jpg')
                     if event.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
+                        audio.make_sound(1)
                         if event.ui_element == start_game_btn:
                             image_menu = \
                                 load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_play.jpg')
@@ -1292,9 +1300,11 @@ if __name__ == '__main__':
                         book_group = pygame.sprite.Group()
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
+                        hit = pygame.sprite.Group()
+                        hit.add(HitEffect())
 
                         Verdict = play_game(START_LEVEL)
-                        CUR_LEVEL, FlagCoNextLevel = check_verdict(Verdict)
+                        CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
                     if event.ui_element == load_game_btn:
                         show_load_screen()
                     if event.ui_element == show_achievements_btn:
