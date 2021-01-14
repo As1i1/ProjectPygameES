@@ -192,6 +192,7 @@ class BaseEnemy(AnimatedSprite):
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
         if pygame.K_UP in directions and not in_jump and not in_fall:
+            audio.make_sound(6)
             motion = True
             self.jump_vy = 125
             self.jump_timer = 2 * self.jump_vy
@@ -371,13 +372,15 @@ class AudioManager:
             1: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\button_hovered.wav'),
             2: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\projectile_sound.wav'),
             3: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\hit.wav'),
-            4: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\collect_book.wav')
+            4: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\collect_book.wav'),
+            5: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\fall.wav'),
+            6: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\jump.wav')
         }
 
     @staticmethod
     def play_music(music_file_name):
         pygame.mixer.music.load(rf'Data\Audio\Music\{music_file_name}')
-        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.set_volume(0.15)
         pygame.mixer.music.play(-1)
 
     def make_sound(self, sound_id):
@@ -514,16 +517,129 @@ def move_background(bg_first, bg_second):
     bg_second.rect.x %= img_width
 
 
+def show_death_screen():
+    text = pygame_gui.elements.UITextBox(
+        manager=UIManager,
+        relative_rect=pygame.Rect(150, 100, 550, 100),
+        html_text='Вы поглощены Совенком!',
+        object_id='#death_text'
+    )
+    restart_btn = pygame_gui.elements.UIButton(
+        manager=UIManager,
+        relative_rect=pygame.Rect(270, 200, 300, 70),
+        text='Перезапустить уровень',
+        object_id="#death_btn"
+    )
+    load_btn = pygame_gui.elements.UIButton(
+        manager=UIManager,
+        relative_rect=pygame.Rect(270, 280, 300, 70),
+        text='Загрузить',
+        object_id="#death_btn"
+    )
+    exit_to_menu_btn = pygame_gui.elements.UIButton(
+        manager=UIManager,
+        relative_rect=pygame.Rect(270, 360, 300, 70),
+        text='Выйти в меню',
+        object_id="#death_btn"
+    )
+    exit_from_death_btn = pygame_gui.elements.UIButton(
+        manager=UIManager,
+        relative_rect=pygame.Rect(270, 440, 300, 70),
+        text='Выйти из игры',
+        object_id="#death_btn"
+    )
+
+    death_screen = True
+    quit_game = False
+
+    while death_screen:
+        death_time_delta = clock.tick() / 1000
+        for event_death in pygame.event.get():
+            if event_death.type == pygame.QUIT:
+                pygame_gui.windows.UIConfirmationDialog(
+                    rect=pygame.Rect(250, 250, 500, 200),
+                    manager=UIManager,
+                    window_title='Подтверждение',
+                    action_short_name='Да',
+                    action_long_desc='Вы действительно хотите выйти из игры?',
+                    blocking=True
+                )
+                quit_game = True
+
+            if event_death.type == pygame.USEREVENT:
+                if event_death.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
+                    audio.make_sound(1)
+                if event_death.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                    kill_buttons([text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn])
+                    if quit_game:
+                        if CURRENT_THEME != 'Pioneer':
+                            terminate()
+                        else:
+
+                            set_bus_to_hell()
+                            audio.play_music('Main_theme.mp3')
+                            return
+
+                    else:
+                        audio.play_music('Main_theme.mp3')
+                        return
+
+                if event_death.user_type == pygame_gui.UI_BUTTON_PRESSED:
+
+                    if event_death.ui_element == load_btn:
+                        for el in [text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn]:
+                            el.hide()
+                        show_load_screen()
+                        for el in [text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn]:
+                            el.show()
+
+                    elif event_death.ui_element == restart_btn:
+                        kill_buttons([text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn])
+                        return True
+
+                    elif event_death.ui_element == exit_to_menu_btn:
+                        pygame_gui.windows.UIConfirmationDialog(
+                            rect=pygame.Rect((250, 250), (500, 200)),
+                            manager=UIManager,
+                            window_title='Подтверждение',
+                            action_long_desc=f'Вы действительно хотите вернуться к '
+                                             f'{names[CURRENT_THEME]}?',
+                            action_short_name='О да!',
+                            blocking=True
+                        )
+                        quit_game = False
+
+                    elif event_death.ui_element == exit_from_death_btn:
+                        pygame_gui.windows.UIConfirmationDialog(
+                            rect=pygame.Rect(250, 250, 500, 200),
+                            manager=UIManager,
+                            window_title='Подтверждение',
+                            action_short_name='Да',
+                            action_long_desc='Вы действительно хотите выйти из игры?',
+                            blocking=True
+                        )
+                        quit_game = True
+
+            UIManager.process_events(event_death)
+
+        screen.fill((0, 0, 0))
+        screen.blit(DICTIONARY_SPITES['DeathScreen'], (0, 0))
+        screen.blit(DICTIONARY_SPITES['HitEffect'], (0, 0))
+        UIManager.update(death_time_delta)
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+
 def active_pause_menu(image=None):
     # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
     # чтобы в случае сохранения сохранить его в качестве превью
     if image is None:
         preview_to_save = pygame.transform.scale(screen, (175, 110))
-        screen.blit(load_image(r'Background/Dark.png'), (0, 0))
+        screen.blit(DICTIONARY_SPITES['DarkScreen'], (0, 0))
         bg = screen.copy()
     else:
         preview_to_save = pygame.transform.scale(image, (175, 110))
-        image.blit(load_image(r'Background/Dark.png'), (0, 0))
+        image.blit(DICTIONARY_SPITES['DarkScreen'], (0, 0))
         bg = image.copy()
 
     # Создаём кнопки
@@ -600,10 +716,6 @@ def active_pause_menu(image=None):
                     # Попытка выхода в меню - запрашиваем подтверждение
                     if event_pause.ui_element == exit_to_menu_btn:
                         quit_game = False
-                        names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
-                                 'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
-                                 'Pioneer': 'Пионеру',
-                                 'OD': 'Ольге Дмитриевне'}
                         pygame_gui.windows.UIConfirmationDialog(
                             rect=pygame.Rect((250, 250), (500, 200)),
                             manager=UIManager,
@@ -745,6 +857,9 @@ def level_1_play_game(tmp, load_flag=False):
         game_time_delta = clock.tick() / 1000
 
         if hero.health <= 0:
+            restart = show_death_screen()
+            if restart:
+                return 1, "restart"
             return 1, "death"
 
         if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == dialog_number:
@@ -1111,15 +1226,13 @@ def check_verdict(verdict):
     # Проверка как закончил уровень игрок
     go_next_level = False
     cur_level = verdict[0]
+
     if verdict[1] == 'passed':
         go_next_level = True
-        cur_level = verdict[0] + 1
-    elif verdict[1] == 'death':
-        cur_level = verdict[0]
-        # вот тут нужно предложить ему выбор попробовать снова пройти уровень или загрузиться
-    elif verdict[1] == 'not passed':
-        cur_level = verdict[0]
-        # Фз что тут делать
+        cur_level += 1
+    if verdict[1] == 'restart':
+        go_next_level = True
+
     return cur_level, go_next_level
 
 
@@ -1153,6 +1266,8 @@ if __name__ == '__main__':
                          'Projectile': load_image(r'Background\Constructions\bag.png'),
                          'BigBound': load_image(r'Background\Constructions\ground.jpg'),
                          'HitEffect': load_image(r'Background\Hit_effect.png'),
+                         'DeathScreen': load_image(r'Background\Death_screen.png'),
+                         'DarkScreen': load_image(r'Background\Dark.png'),
                          'Alisa': r'',
                          'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                          'Miku': r'',
@@ -1162,6 +1277,11 @@ if __name__ == '__main__':
                          'Zhenya': r'',
                          'OD': r'',
                          'Pioneer': r''}
+
+    names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
+             'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
+             'Pioneer': 'Пионеру',
+             'OD': 'Ольге Дмитриевне'}
 
     # Инициализация
     pygame.init()
@@ -1242,9 +1362,6 @@ if __name__ == '__main__':
     audio.play_music('Main_theme.mp3')
 
     while running:
-        if FlagGoNextLevel:
-            play_game(CUR_LEVEL)
-            CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -1283,13 +1400,13 @@ if __name__ == '__main__':
                                     image_menu = load_image(
                                         rf'Background\Menu\{CURRENT_THEME}\Menu_exit_knife.jpg')
 
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED or FlagGoNextLevel:
                     start_game_btn.hide()
                     show_achievements_btn.hide()
                     load_game_btn.hide()
                     exit_btn.hide()
 
-                    if event.ui_element == start_game_btn:
+                    if event.ui_element == start_game_btn or FlagGoNextLevel:
                         # Создание спарйт-групп
                         bound_group = pygame.sprite.Group()
                         background_group = pygame.sprite.Group()
