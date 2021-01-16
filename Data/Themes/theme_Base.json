@@ -110,5 +110,31 @@
              "name": "bolder",
              "regular_path": "Data\\Fonts\\Third_font.ttf"
          }
+   },
+   "#death_text":
+   {
+     "colours": {
+       "dark_bg": "#00000000",
+       "normal_border": "#00000000",
+       "normal_text": "#DCDCDC"
+     },
+     "font": {
+       "size": "60",
+       "name": "bolder",
+       "regular_path": "Data\\Fonts\\Third_font.ttf"
+     }
+   },
+   "#death_btn":
+   {
+     "colours": {
+       "dark_bg": "#00000000",
+       "normal_border": "#00000000",
+       "normal_text": "#DCDCDC"
+     },
+     "font": {
+       "size": "40",
+       "name": "bolder",
+       "regular_path": "Data\\Fonts\\Third_font.ttf"
+     }
    }
  }
