@@ -1,10 +1,22 @@
     
     camera = Camera()
-    bg_first = BackGround(-4000, r'Background\city_background_sunset — копия.png', all_sprites)
-    bg_second = BackGround(0, r'Background\city_background_sunset — копия.png', all_sprites)
-    hero, hero_pos_x, hero_pos_y, coord_checkpoints = generate_level(load_level('Levels/test_level1.txt'),
-                                                                     (all_sprites, hero_group),
-                                                                     (bound_group, all_sprites))
+    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+        if load_flag:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+        with open(load_data, 'r', encoding='utf-8') as file:
+            lines_load = file.readlines()
+            for line_load in lines_load:
+                pass
+    else:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+    for sprite in whero_group.sprites():
+        sprite.fall()
+
     running_game = True
     cur_dialog = []
     while running_game:

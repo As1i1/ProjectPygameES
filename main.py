@@ -328,10 +328,11 @@ class Hero(BaseEnemy):
                       max(self.lower_bound - self.rect.x, -1))
 
 
-class Lena(pygame.sprite.Sprite):
-    def __init__(self, image, pos_x, pos_y, *groups):
+class WHero(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y, name,  *groups):
         super().__init__(*groups)
         self.image = image
+        self.name = name
         self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT - self.image.get_height())
         self.is_flip = True
 
@@ -384,7 +385,14 @@ class AudioManager:
         pygame.mixer.music.play(-1)
 
     def make_sound(self, sound_id):
-        self.sounds[sound_id].play()
+        if sound_id in self.sounds and self.sounds[sound_id] != '':
+            self.sounds[sound_id].play()
+
+    def change_sound(self, sound_id, song):
+        self.sounds[sound_id] = song
+
+    def get_sound(self, sound_id):
+        return self.sounds[sound_id]
 
     @staticmethod
     def stop_music():
@@ -434,6 +442,7 @@ def load_level(filename):
 
 def generate_level(level, hero_groups, asphalt_groups):
     # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена, c - checkpoint место где герои разговаривают
+    # L - Лена, P - Пионер
     hero, pos_x, pos_y, cnt_books, coord_checkpoints, cur_checkpoint, exit_pos = None, None, None, 0, [], 0, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
@@ -458,7 +467,9 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'e':
                 exit_pos = TILE_WIDTH * x
             if level[y][x] == 'L':
-                Lena(DICTIONARY_SPITES['Lena'], x, y, whero_group, all_sprites)
+                WHero(DICTIONARY_SPITES['Lena'], x, y, 'Lena', whero_group, all_sprites)
+            if level[y][x] == 'P':
+                WHero(DICTIONARY_SPITES['Pioneer'], x, y, 'Pioneer', whero_group, all_sprites)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -764,7 +775,7 @@ def show_dialog(data):
     bg = screen.copy()
     name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
                    'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
-                   'Semen': '#F5DEB3'}
+                   'Semen': '#F5DEB3', 'Pioner': '#	8B0000'}
 
     ln = len(data)
     cur_phrase = 0
@@ -831,6 +842,7 @@ def get_level_dialog(level):
 
 def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
     audio.play_music('Level1_theme.mp3')
+    HitSound = audio.get_sound(3)
     camera = Camera()
     bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
     bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
@@ -839,8 +851,8 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
                                                                                    (all_sprites, hero_group),
                                                                                    (bound_group, all_sprites))
         with open(load_data, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-            for line in lines:
+            lines_load = file.readlines()
+            for line_load in lines_load:
                 pass
     else:
         hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
@@ -919,8 +931,11 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             hero.collide_books()
             all_sprites.draw(screen)
 
-        if hero.is_hitted:
+        if hero.is_hitted and dialog_number == 3:
+            audio.change_sound(3, HitSound)
             hit.draw(screen)
+        else:
+            audio.change_sound(3, '')
 
         UIManager.draw_ui(screen)
         if dialog_number != 3:
@@ -939,6 +954,83 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
     return 1, "not passed"
 
 
+def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
+    audio.play_music('Level1_theme.mp3')
+
+    camera = Camera()
+
+    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+
+    if load_flag:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+        with open(load_data, 'r', encoding='utf-8') as file:
+            lines_load = file.readlines()
+            for line_load in lines_load:
+                pass
+    else:
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level2'),
+                                                                                   (all_sprites, hero_group),
+                                                                                   (bound_group, all_sprites))
+    for sprite in whero_group.sprites():
+        sprite.fall()
+
+    queue_dialogs = [0] * len(tmp)
+    dialogs_text = get_level_dialog(1)
+    for cnt, x in coord_checkpoints:
+        queue_dialogs[tmp.index(cnt)] = x
+
+    running_game = True
+    cur_dialog = []
+    while running_game:
+        game_time_delta = clock.tick() / 1000
+
+        if hero.health <= 0:
+            return
+
+        for event_game in pygame.event.get():
+            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                  event_game.key == pygame.K_ESCAPE):
+                try:
+                    active_pause_menu()
+                except ExitToMenuException:
+                    running_game = False
+
+            UIManager.process_events(event_game)
+            all_sprites.update()
+
+        UIManager.update(game_time_delta)
+        all_sprites.update()
+        hero.collide_books()
+
+        # Движение BackGround`а (бесконечный фон)
+        move_background(bg_first, bg_second)
+
+        camera.update(hero)
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            camera.apply(sprite)
+        for sprite in invisible_bound:
+            camera.apply(sprite)
+
+        screen.fill((0, 0, 0))
+
+        all_sprites.draw(screen)
+        hero_group.draw(screen)
+        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+        if cur_dialog:
+            try:
+                show_dialog(cur_dialog)
+            except ExitToMenuException:
+                running_game = False
+            cur_dialog = []
+
+
 def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
     """Запуск игры (игрового цикла)"""
 
@@ -946,6 +1038,11 @@ def play_game(level):  # TODO Сделать игру:D ага *****; за бу�
         story_lines = open(r'Data\Levels\data_level1', 'r', encoding='utf-8').readlines()
         queue = list(map(int, story_lines[1].strip().split()))
         return level_1_play_game(queue)
+
+    if level == 2:
+        story_lines = open(r"Data\Levels\data_level2", 'r', encoding='utf-8').readlines()
+        queue = list(map(int, story_lines[1].strip().split()))
+        return level_2_play_game(queue)
 
     return
 
@@ -1231,6 +1328,10 @@ def set_bus_to_hell():
     image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_you_cant_escape.jpg')
 
 
+def start_screen():
+    pass
+
+
 def check_verdict(verdict):
     # Проверка как закончил уровень игрок
     go_next_level = False
@@ -1285,7 +1386,7 @@ if __name__ == '__main__':
                          'UVAO': r'',
                          'Zhenya': r'',
                          'OD': r'',
-                         'Pioneer': r''}
+                         'Pioneer': load_image(r'Sprites\Semen\Pioneer_state_pos.png')}
 
     names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
              'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
@@ -1315,7 +1416,7 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     MAX_LEVEL = None
     CUR_LEVEL = None
-    START_LEVEL = 1
+    START_LEVEL = 2
 
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
@@ -1405,7 +1506,7 @@ if __name__ == '__main__':
                                 load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_exit.jpg')
                             if CURRENT_THEME == 'Lena':
                                 Lenas_instability = random.randrange(0, 100)
-                                if Lenas_instability >= 80:
+                                if Lenas_instability >= 90:
                                     image_menu = load_image(
                                         rf'Background\Menu\{CURRENT_THEME}\Menu_exit_knife.jpg')
 
