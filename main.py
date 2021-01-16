@@ -1416,7 +1416,7 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     MAX_LEVEL = None
     CUR_LEVEL = None
-    START_LEVEL = 2
+    START_LEVEL = 1
 
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
@@ -1474,6 +1474,21 @@ if __name__ == '__main__':
     while running:
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
+            if FlagGoNextLevel:
+                bound_group = pygame.sprite.Group()
+                background_group = pygame.sprite.Group()
+                hero_group = pygame.sprite.Group()
+                enemy_group = pygame.sprite.Group()
+                whero_group = pygame.sprite.Group()
+                all_sprites = pygame.sprite.Group()
+                book_group = pygame.sprite.Group()
+                projectile_group = pygame.sprite.Group()
+                invisible_bound = pygame.sprite.Group()
+                hit = pygame.sprite.Group()
+                hit.add(HitEffect())
+
+                Verdict = play_game(START_LEVEL)
+                CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
             if event.type == pygame.QUIT:
                 if bus_to_hell:
                     running = False
@@ -1510,13 +1525,13 @@ if __name__ == '__main__':
                                     image_menu = load_image(
                                         rf'Background\Menu\{CURRENT_THEME}\Menu_exit_knife.jpg')
 
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED or FlagGoNextLevel:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     start_game_btn.hide()
                     show_achievements_btn.hide()
                     load_game_btn.hide()
                     exit_btn.hide()
 
-                    if event.ui_element == start_game_btn or FlagGoNextLevel:
+                    if event.ui_element == start_game_btn:
                         # Создание спарйт-групп
                         bound_group = pygame.sprite.Group()
                         background_group = pygame.sprite.Group()
@@ -1542,7 +1557,7 @@ if __name__ == '__main__':
                         else:
                             set_bus_to_hell()
 
-                    if not bus_to_hell:
+                    if not bus_to_hell and not FlagGoNextLevel:
                         start_game_btn.show()
                         show_achievements_btn.show()
                         load_game_btn.show()
@@ -1551,7 +1566,8 @@ if __name__ == '__main__':
             UIManager.process_events(event)
 
         UIManager.update(time_delta)
-        screen.blit(image_menu, (0, 0))
+        if not FlagGoNextLevel:
+            screen.blit(image_menu, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
