@@ -1416,7 +1416,7 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     MAX_LEVEL = None
     CUR_LEVEL = None
-    START_LEVEL = 1
+    START_LEVEL = 2
 
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
