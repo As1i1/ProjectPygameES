@@ -480,7 +480,7 @@ def generate_level(level, hero_groups, asphalt_groups):
 
 def draw_text_data(text):
     for i in range(len(text)):
-        cur_text = COUNTER_BOOKS_FONT.render(text[i], True, (125, 0, 0))
+        cur_text = COUNTER_BOOKS_FONT.render(text[i], True, name_colors[CURRENT_THEME])
         screen.blit(cur_text, (0, i * 35))
 
 
@@ -781,9 +781,6 @@ def active_pause_menu(image=None):
 def show_dialog(data):
     """Принимает список кортежей [(Имя говорящего, фраза, стандартизирование имя говорящего)]"""
     bg = screen.copy()
-    name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
-                   'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
-                   'Semen': '#F5DEB3', 'Pioner': '#	8B0000'}
 
     ln = len(data)
     cur_phrase = 0
@@ -1405,6 +1402,10 @@ if __name__ == '__main__':
              'Pioneer': 'Пионеру',
              'OD': 'Ольге Дмитриевне'}
 
+    name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
+                   'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
+                   'Semen': '#F5DEB3', 'Pioner': '#	8B0000'}
+
     # Инициализация
     pygame.init()
     SIZE = WIDTH, HEIGHT = 800, 600
@@ -1422,7 +1423,7 @@ if __name__ == '__main__':
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
     # Константа шрифта
-    COUNTER_BOOKS_FONT = pygame.font.Font(None, 35)
+    COUNTER_BOOKS_FONT = pygame.font.Font(r'Data\Fonts\Third_font.ttf', 35)
 
     # Считывание данных файла прохождения (data.txt) и заполение данных
     FlagGoNextLevel = False
