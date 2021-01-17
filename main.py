@@ -292,11 +292,11 @@ class Hero(BaseEnemy):
             audio.make_sound(2)
             if self.is_rotate:
                 Projectile(self.rect.x, self.rect.y + 10,
-                           DICTIONARY_SPITES['Projectile'], 'Left',
+                           DICTIONARY_SPRITES['Projectile'], 'Left',
                            all_sprites, projectile_group)
             else:
                 Projectile(self.rect.x + self.rect.w, self.rect.y + 10,
-                           DICTIONARY_SPITES['Projectile'], 'Right',
+                           DICTIONARY_SPRITES['Projectile'], 'Right',
                            all_sprites, projectile_group)
 
             self.projectile_current_time = self.projectile_timer
@@ -333,7 +333,8 @@ class WHero(pygame.sprite.Sprite):
         super().__init__(*groups)
         self.image = image
         self.name = name
-        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT - self.image.get_height())
+        self.rect = self.image.get_rect().move(pos_x * TILE_WIDTH, pos_y * TILE_HEIGHT -
+                                               self.image.get_height())
         self.is_flip = True
 
     def fall(self):
@@ -350,7 +351,8 @@ class WHero(pygame.sprite.Sprite):
                 self.flip_image()
 
     def change_pos(self, camera, x, y):
-        """Добавляет к координате x, y, Параметр camera показывает должен ли персонаж в это время находится в кадре"""
+        """Добавляет к координате x, y,
+        Параметр camera показывает должен ли персонаж в это время находится в кадре"""
         pass
 
     def flip_image(self):
@@ -362,7 +364,7 @@ class WHero(pygame.sprite.Sprite):
 class HitEffect(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(hit)
-        self.image = DICTIONARY_SPITES['HitEffect']
+        self.image = DICTIONARY_SPRITES['HitEffect']
         self.rect = self.image.get_rect().move(0, 0)
 
 
@@ -441,35 +443,37 @@ def load_level(filename):
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена, c - checkpoint место где герои разговаривают
+    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена,
+    # c - checkpoint место где герои разговаривают
     # L - Лена, P - Пионер
-    hero, pos_x, pos_y, cnt_books, coord_checkpoints, cur_checkpoint, exit_pos = None, None, None, 0, [], 0, 0
+    hero, pos_x, pos_y, cnt_books = None, None, None, 0
+    coord_checkpoints, cur_checkpoint, exit_pos = [], 0, 0
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == 'a':
-                Bound(x, y, DICTIONARY_SPITES['Bound'], *asphalt_groups)
+                Bound(x, y, DICTIONARY_SPRITES['Bound'], *asphalt_groups)
             if level[y][x] == 'H':
-                hero = Hero(DICTIONARY_SPITES['Hero'], 8, 2, x, y, *hero_groups)
+                hero = Hero(DICTIONARY_SPRITES['Hero'], 8, 2, x, y, *hero_groups)
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
-                Book(DICTIONARY_SPITES['Element'], x, y, all_sprites, book_group)
+                Book(DICTIONARY_SPRITES['Element'], x, y, all_sprites, book_group)
             if level[y][x] == "E":
-                Enemy(DICTIONARY_SPITES['Enemy'], 4, 1, x, y,
+                Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
             if level[y][x] == 'i':
-                Bound(x, y, DICTIONARY_SPITES['InvisibleBound'], bound_group, invisible_bound)
+                Bound(x, y, DICTIONARY_SPRITES['InvisibleBound'], bound_group, invisible_bound)
             if level[y][x] == 'g':
-                Bound(x, y, DICTIONARY_SPITES['BigBound'], *asphalt_groups)
+                Bound(x, y, DICTIONARY_SPRITES['BigBound'], *asphalt_groups)
             if level[y][x] == 'c':
                 coord_checkpoints.append((cur_checkpoint + 1, x * TILE_WIDTH))
                 cur_checkpoint += 1
             if level[y][x] == 'e':
                 exit_pos = TILE_WIDTH * x
             if level[y][x] == 'L':
-                WHero(DICTIONARY_SPITES['Lena'], x, y, 'Lena', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Lena'], x, y, 'Lena', whero_group, all_sprites)
             if level[y][x] == 'P':
-                WHero(DICTIONARY_SPITES['Pioneer'], x, y, 'Pioneer', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Pioneer'], x, y, 'Pioneer', whero_group, all_sprites)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -581,7 +585,8 @@ def show_death_screen():
                 if event_death.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
                     audio.make_sound(1)
                 if event_death.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                    kill_buttons([text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn])
+                    kill_buttons([text, restart_btn, load_btn,
+                                  exit_to_menu_btn, exit_from_death_btn])
                     if quit_game:
                         if CURRENT_THEME != 'Pioneer':
                             terminate()
@@ -598,14 +603,17 @@ def show_death_screen():
                 if event_death.user_type == pygame_gui.UI_BUTTON_PRESSED:
 
                     if event_death.ui_element == load_btn:
-                        for el in [text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn]:
+                        for el in [text, restart_btn, load_btn,
+                                   exit_to_menu_btn, exit_from_death_btn]:
                             el.hide()
                         show_load_screen()
-                        for el in [text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn]:
+                        for el in [text, restart_btn, load_btn,
+                                   exit_to_menu_btn, exit_from_death_btn]:
                             el.show()
 
                     elif event_death.ui_element == restart_btn:
-                        kill_buttons([text, restart_btn, load_btn, exit_to_menu_btn, exit_from_death_btn])
+                        kill_buttons([text, restart_btn, load_btn,
+                                      exit_to_menu_btn, exit_from_death_btn])
                         return True
 
                     elif event_death.ui_element == exit_to_menu_btn:
@@ -634,8 +642,8 @@ def show_death_screen():
             UIManager.process_events(event_death)
 
         screen.fill((0, 0, 0))
-        screen.blit(DICTIONARY_SPITES['DeathScreen'], (0, 0))
-        screen.blit(DICTIONARY_SPITES['HitEffect'], (0, 0))
+        screen.blit(DICTIONARY_SPRITES['DeathScreen'], (0, 0))
+        screen.blit(DICTIONARY_SPRITES['HitEffect'], (0, 0))
         UIManager.update(death_time_delta)
         UIManager.draw_ui(screen)
         pygame.display.flip()
@@ -646,11 +654,11 @@ def active_pause_menu(image=None):
     # чтобы в случае сохранения сохранить его в качестве превью
     if image is None:
         preview_to_save = pygame.transform.scale(screen, (175, 110))
-        screen.blit(DICTIONARY_SPITES['DarkScreen'], (0, 0))
+        screen.blit(DICTIONARY_SPRITES['DarkScreen'], (0, 0))
         bg = screen.copy()
     else:
         preview_to_save = pygame.transform.scale(image, (175, 110))
-        image.blit(DICTIONARY_SPITES['DarkScreen'], (0, 0))
+        image.blit(DICTIONARY_SPRITES['DarkScreen'], (0, 0))
         bg = image.copy()
 
     # Создаём кнопки
@@ -844,20 +852,20 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
     audio.play_music('Level1_theme.mp3')
     HitSound = audio.get_sound(3)
     camera = Camera()
-    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+    bg_first = BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+    bg_second = BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
     if load_flag:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
+            generate_level(load_level(load_map), (all_sprites, hero_group),
+                           (bound_group, all_sprites))
         with open(load_data, 'r', encoding='utf-8') as file:
             lines_load = file.readlines()
             for line_load in lines_load:
                 pass
     else:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
+            generate_level(load_level('Levels/level1'), (all_sprites, hero_group),
+                           (bound_group, all_sprites))
     for sprite in whero_group.sprites():
         sprite.fall()
 
@@ -883,7 +891,8 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
                 return 1, "restart"
             return 1, "death"
 
-        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == dialog_number:
+        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == \
+                dialog_number:
             return 1, "passed"
 
         if dialog_number < len(dialogs_text) and hero.state and \
@@ -907,7 +916,11 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
                     running_game = False
 
             UIManager.process_events(event_game)
-            all_sprites.update()
+
+        if dialog_number == 3:
+            audio.change_sound(3, HitSound)
+        else:
+            audio.change_sound(3, '')
 
         UIManager.update(game_time_delta)
         all_sprites.update()
@@ -932,10 +945,7 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             all_sprites.draw(screen)
 
         if hero.is_hitted and dialog_number == 3:
-            audio.change_sound(3, HitSound)
             hit.draw(screen)
-        else:
-            audio.change_sound(3, '')
 
         UIManager.draw_ui(screen)
         if dialog_number != 3:
@@ -948,7 +958,8 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             cur_dialog = []
 
         if dialog_number == 3:
-            draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
+            draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}",
+                            f"HP: {hero.health}"])
             pygame.display.flip()
 
     return 1, "not passed"
@@ -959,21 +970,21 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
 
     camera = Camera()
 
-    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
+    bg_first = BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+    bg_second = BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
 
     if load_flag:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
+            generate_level(load_level(load_map), (all_sprites, hero_group),
+                           (bound_group, all_sprites))
         with open(load_data, 'r', encoding='utf-8') as file:
             lines_load = file.readlines()
             for line_load in lines_load:
                 pass
     else:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level2'),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
+        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
+            generate_level(load_level('Levels/level2'), (all_sprites, hero_group),
+                           (bound_group, all_sprites))
     for sprite in whero_group.sprites():
         sprite.fall()
 
@@ -1019,7 +1030,8 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
 
         all_sprites.draw(screen)
         hero_group.draw(screen)
-        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
+        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}",
+                        f"HP: {hero.health}"])
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
@@ -1367,26 +1379,26 @@ if __name__ == '__main__':
         ['Pioneer']  # 0.1%
     )
 
-    DICTIONARY_SPITES = {'Hero': load_image(r'Sprites\Semen\Semen_variant2.1.png'),
-                         'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
-                         'Background': load_image(r'Background\city_background_sunset — копия.png'),
-                         'Element': load_image(r'Background\Constructions\redbook.png'),
-                         'Bound': load_image(r'Background\Constructions\asphalt.png'),
-                         'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
-                         'Projectile': load_image(r'Background\Constructions\bag.png'),
-                         'BigBound': load_image(r'Background\Constructions\ground.jpg'),
-                         'HitEffect': load_image(r'Background\Hit_effect.png'),
-                         'DeathScreen': load_image(r'Background\Death_screen.png'),
-                         'DarkScreen': load_image(r'Background\Dark.png'),
-                         'Alisa': r'',
-                         'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
-                         'Miku': r'',
-                         'Ulyana': r'',
-                         'Slavya': r'',
-                         'UVAO': r'',
-                         'Zhenya': r'',
-                         'OD': r'',
-                         'Pioneer': load_image(r'Sprites\Semen\Pioneer_state_pos.png')}
+    DICTIONARY_SPRITES = {'Hero': load_image(r'Sprites\Semen\Semen_variant2.1.png'),
+                          'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
+                          'Background': load_image(r'Background\city_background_sunset — копия.png'),
+                          'Element': load_image(r'Background\Constructions\redbook.png'),
+                          'Bound': load_image(r'Background\Constructions\asphalt.png'),
+                          'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
+                          'Projectile': load_image(r'Background\Constructions\bag.png'),
+                          'BigBound': load_image(r'Background\Constructions\ground.jpg'),
+                          'HitEffect': load_image(r'Background\Hit_effect.png'),
+                          'DeathScreen': load_image(r'Background\Death_screen.png'),
+                          'DarkScreen': load_image(r'Background\Dark.png'),
+                          'Alisa': r'',
+                          'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
+                          'Miku': r'',
+                          'Ulyana': r'',
+                          'Slavya': r'',
+                          'UVAO': r'',
+                          'Zhenya': r'',
+                          'OD': r'',
+                          'Pioneer': load_image(r'Sprites\Semen\Pioneer_state_pos.png')}
 
     names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
              'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
@@ -1414,9 +1426,10 @@ if __name__ == '__main__':
 
     # Считывание данных файла прохождения (data.txt) и заполение данных
     FlagGoNextLevel = False
+    RestartLevelEvent = pygame.event.custom_type()
     MAX_LEVEL = None
     CUR_LEVEL = None
-    START_LEVEL = 2
+    START_LEVEL = 1
 
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
@@ -1474,21 +1487,6 @@ if __name__ == '__main__':
     while running:
         time_delta = clock.tick(FPS) / 1000
         for event in pygame.event.get():
-            if FlagGoNextLevel:
-                bound_group = pygame.sprite.Group()
-                background_group = pygame.sprite.Group()
-                hero_group = pygame.sprite.Group()
-                enemy_group = pygame.sprite.Group()
-                whero_group = pygame.sprite.Group()
-                all_sprites = pygame.sprite.Group()
-                book_group = pygame.sprite.Group()
-                projectile_group = pygame.sprite.Group()
-                invisible_bound = pygame.sprite.Group()
-                hit = pygame.sprite.Group()
-                hit.add(HitEffect())
-
-                Verdict = play_game(START_LEVEL)
-                CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
             if event.type == pygame.QUIT:
                 if bus_to_hell:
                     running = False
@@ -1497,11 +1495,12 @@ if __name__ == '__main__':
                         set_bus_to_hell()
                     else:
                         confirm_exit()
-            if event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+            if event.type == pygame.USEREVENT or FlagGoNextLevel:
+                if not FlagGoNextLevel and \
+                        event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                     running = False
 
-                if not bus_to_hell:
+                if not FlagGoNextLevel and not bus_to_hell:
                     # Изменяем фон в зависимости он наведённости на одну из кнопок
                     if event.user_type == pygame_gui.UI_BUTTON_ON_UNHOVERED:
                         image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_normal.jpg')
@@ -1525,13 +1524,13 @@ if __name__ == '__main__':
                                     image_menu = load_image(
                                         rf'Background\Menu\{CURRENT_THEME}\Menu_exit_knife.jpg')
 
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if FlagGoNextLevel or event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     start_game_btn.hide()
                     show_achievements_btn.hide()
                     load_game_btn.hide()
                     exit_btn.hide()
 
-                    if event.ui_element == start_game_btn:
+                    if FlagGoNextLevel or event.ui_element == start_game_btn:
                         # Создание спарйт-групп
                         bound_group = pygame.sprite.Group()
                         background_group = pygame.sprite.Group()
@@ -1547,11 +1546,13 @@ if __name__ == '__main__':
 
                         Verdict = play_game(START_LEVEL)
                         CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
-                    if event.ui_element == load_game_btn:
+                        pygame.event.Event(RestartLevelEvent)
+
+                    elif event.ui_element == load_game_btn:
                         show_load_screen()
-                    if event.ui_element == show_achievements_btn:
+                    elif event.ui_element == show_achievements_btn:
                         show_achievements_storage()
-                    if event.ui_element == exit_btn:
+                    elif event.ui_element == exit_btn:
                         if CURRENT_THEME != 'Pioneer':
                             confirm_exit()
                         else:
