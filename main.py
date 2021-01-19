@@ -649,7 +649,7 @@ def show_death_screen():
         pygame.display.flip()
 
 
-def active_pause_menu(image=None):
+def active_pause_menu(image=None, save_data=None):
     # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
     # чтобы в случае сохранения сохранить его в качестве превью
     if image is None:
@@ -759,7 +759,8 @@ def active_pause_menu(image=None):
                         if event_pause.ui_element == load_game_from_pause_btn:
                             show_load_screen(ask_for_confirm=True)
                         else:
-                            show_load_screen(save_instead_of_load=True, preview=preview_to_save)
+                            show_load_screen(save_instead_of_load=True, preview=preview_to_save,
+                                             save_data=save_data)
 
                         for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
                                     exit_to_menu_btn, exit_from_pause_btn]:
@@ -908,7 +909,9 @@ def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
                 try:
-                    active_pause_menu()
+                    active_pause_menu(save_data={'dialog_number': dialog_number, 'hp': hero.health,
+                                                 'all_books': hero.all_books,
+                                                 'collected_books': hero.counter_books})
                 except ExitToMenuException:
                     running_game = False
 
@@ -992,6 +995,7 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
 
     running_game = True
     cur_dialog = []
+    dialog_number = 0
     while running_game:
         game_time_delta = clock.tick() / 1000
 
@@ -1002,7 +1006,9 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                   event_game.key == pygame.K_ESCAPE):
                 try:
-                    active_pause_menu()
+                    active_pause_menu(save_data={'dialog_number': dialog_number, 'hp': hero.health,
+                                                 'all_books': hero.all_books,
+                                                 'collected_books': hero.counter_books})
                 except ExitToMenuException:
                     running_game = False
 
@@ -1143,14 +1149,16 @@ def kill_buttons(arr):
         btn.kill()
 
 
-def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=None):
+def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
+                     preview=None, save_data=None):
     """ask_for_confirm - запрашивать ли подтверждение при загрузке
        (подтверждение необходимо в случае загрузки из меню паузы)
 
        Если save_instead_of_load is True, тогда будет кнопка загрузить, вместо кнопки загрузки
 
        Также если save_instead_of_load is True,
-                  необходимо передать preview - превью нового сохранения"""
+                  необходимо передать preview - превью нового сохранения,
+                  а также save_data - данные для сохранения"""
 
     bg = load_image(r'Background/Load_screen.jpg')
 
@@ -1189,7 +1197,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
                     if confirm_func:
                         if save_instead_of_load:
                             # Подтверждена попытка перезаписи сохранения
-                            save_game(current_page, last_clicked, preview, overwrite=True)
+                            save_game(current_page, last_clicked, preview, save_data, overwrite=True)
                         else:
                             # Подтверждена загрузка сохранения
                             load_game(rf'Saves/{current_page}/{last_clicked}')
@@ -1241,7 +1249,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
                                 )
                             else:
                                 # Сохранение в новым слот - подтверждение не требуется
-                                save_game(current_page, last_clicked, preview)
+                                save_game(current_page, last_clicked, preview, save_data)
                                 kill_buttons(buttons)
                                 kill_buttons(page_buttons)
 
@@ -1303,7 +1311,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
     return
 
 
-def save_game(page, cell, preview, overwrite=False):
+def save_game(page, cell, preview, save_data, overwrite=False):
     if overwrite:
         shutil.rmtree(rf'Saves/{page}/{cell}')
 
@@ -1311,6 +1319,28 @@ def save_game(page, cell, preview, overwrite=False):
     pygame.image.save(preview, rf'Saves/{page}/{cell}/preview.jpg')
     with open(rf'Saves/{page}/{cell}/date.txt', 'w', encoding='utf-8') as f:
         f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
+
+    with open(rf'Saves/{page}/{cell}/data.txt', 'w', encoding='utf-8') as f:
+        json.dump(save_data, f)
+
+    with open(rf'Saves/{page}/{cell}/map.txt', 'w', encoding='utf-8') as f, \
+            open(rf'Data/Levels/level{CUR_LEVEL}', 'r', encoding='utf-8') as raw_map:
+        map_lines = []
+        for map_line in raw_map.readlines():
+            map_lines.append(list(map_line))
+        for i in range(len(map_lines)):
+            for j in range(len(map_lines[i])):
+                if map_lines[i][j] in {'H', 'b', 'E'}:
+                    map_lines[i][j] = '.'
+        hr = hero_group.sprites()[0]
+        map_lines[hr.rect.y // TILE_HEIGHT][hr.absolute_x // TILE_WIDTH] = 'H'
+        for enm in enemy_group.sprites():
+            map_lines[enm.rect.y // TILE_HEIGHT][enm.absolute_x // TILE_WIDTH] = 'E'
+
+        for bk in book_group:
+            map_lines[bk.rect.y // TILE_HEIGHT][bk.rect.x // TILE_WIDTH] = 'b'
+
+        f.write('\n'.join(map(lambda x: ''.join(x), map_lines)))
 
 
 def load_game(path):  # TODO Реализовать загрузку
