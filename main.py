@@ -988,19 +988,40 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
     for sprite in whero_group.sprites():
         sprite.fall()
 
+    all_sprites_without_Lena = pygame.sprite.Group()
+    for sprite in all_sprites.sprites():
+        if not isinstance(sprite, WHero):
+            all_sprites_without_Lena.add(sprite)
+        elif sprite.name != 'Lena':
+            all_sprites_without_Lena.add(sprite)
+
     queue_dialogs = [0] * len(tmp)
-    dialogs_text = get_level_dialog(1)
+    dialogs_text = get_level_dialog(2)
     for cnt, x in coord_checkpoints:
         queue_dialogs[tmp.index(cnt)] = x
 
     running_game = True
+    dialog_number = 0
     cur_dialog = []
     dialog_number = 0
     while running_game:
+        hero.projectile_current_time = 100
         game_time_delta = clock.tick() / 1000
 
         if hero.health <= 0:
-            return
+            restart = show_death_screen()
+            if restart:
+                return 1, "restart"
+            return 1, "death"
+
+        if dialog_number < len(dialogs_text) and hero.state and \
+                hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
+            cur_dialog = dialogs_text[dialog_number]
+            dialog_number += 1
+
+        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == \
+                dialog_number:
+            return 2, "passed"
 
         for event_game in pygame.event.get():
             if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
@@ -1031,10 +1052,13 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
 
         screen.fill((0, 0, 0))
 
-        all_sprites.draw(screen)
+        if dialog_number == 2:
+            all_sprites.draw(screen)
+        else:
+            all_sprites_without_Lena.draw(screen)
         hero_group.draw(screen)
-        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}",
-                        f"HP: {hero.health}"])
+        if dialog_number == 2:
+            draw_text_data([f"Найти Лену"])
         UIManager.draw_ui(screen)
         pygame.display.flip()
 
@@ -1044,6 +1068,8 @@ def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
             except ExitToMenuException:
                 running_game = False
             cur_dialog = []
+
+    return 1, "not passed"
 
 
 def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
@@ -1434,7 +1460,7 @@ if __name__ == '__main__':
 
     name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
                    'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
-                   'Semen': '#F5DEB3', 'Pioner': '#	8B0000'}
+                   'Semen': '#F5DEB3', 'Pioneer': '#8B0000'}
 
     # Инициализация
     pygame.init()
@@ -1460,7 +1486,7 @@ if __name__ == '__main__':
     RestartLevelEvent = pygame.event.custom_type()
     MAX_LEVEL = None
     CUR_LEVEL = None
-    START_LEVEL = 1
+    START_LEVEL = 2
 
     lines = open('data.txt', 'r', encoding='utf-8').readlines()
     for line in lines:
