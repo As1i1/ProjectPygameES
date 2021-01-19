@@ -344,12 +344,10 @@ class WHero(pygame.sprite.Sprite):
         self.rect.y -= 1
 
     def update(self, *args, **kwargs):
-        if args and isinstance(args[0], Hero):
-            hero = args[0]
-            if self.rect.x + self.rect.w < hero.rect.x and not self.is_flip:
-                self.flip_image()
-            if self.rect.x > hero.rect.x + hero.rect.w and self.is_flip:
-                self.flip_image()
+        if self.rect.x + self.rect.w < game.hero.rect.x and not self.is_flip:
+            self.flip_image()
+        if self.rect.x > game.hero.rect.x + game.hero.rect.w and self.is_flip:
+            self.flip_image()
 
     def change_pos(self, camera, x, y):
         """Добавляет к координате x, y,
@@ -1620,6 +1618,8 @@ if __name__ == '__main__':
                         CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
                         if LoadData is not None:
                             FlagGoNextLevel = True
+                        if CUR_LEVEL > MAX_LEVEL:
+                            FlagGoNextLevel = False
                         pygame.event.Event(RestartLevelEvent)
 
                     elif event.ui_element == load_game_btn:
