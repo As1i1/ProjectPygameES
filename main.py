@@ -417,6 +417,7 @@ class GameManager:
             open(rf'Data/Levels/data_level{level_data}', 'r', encoding='utf-8').readlines()
         queue = list(map(int, story_lines[1].strip().split()))
 
+        self.cur_dialog_in_progress = -1
         self.camera = Camera()
         self.bg_first = \
             BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
@@ -438,12 +439,15 @@ class GameManager:
 
         if load_from_save:
             self.dialog_number = int(load_data['dialog_number'])
+            self.cur_dialog = load_data['cur_dialog']
             self.hero.health = int(load_data['hp'])
             self.hero.all_books = int(load_data['all_books'])
             self.hero.counter_books = int(load_data['collected_books'])
+            self.cur_dialog_in_progress = int(load_data['cur_dialog_in_progress'])
 
             self.hero.dx = max(self.hero.upper_bound - self.hero.rect.x,
-                               self.hero.lower_bound - self.hero.rect.x)
+                               self.hero.lower_bound - self.hero.rect.x) - \
+                self.hero.upper_bound + self.hero.lower_bound
             self.camera.update(self.hero)
             # обновляем положение всех спрайтов
             for sprite in all_sprites:
@@ -540,10 +544,11 @@ class GameManager:
                 pygame.display.flip()
             if self.cur_dialog:
                 try:
-                    show_dialog(self.cur_dialog)
+                    show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
+                self.cur_dialog_in_progress = -1
 
             if self.dialog_number == 3:
                 draw_text_data([f"Собрать книги. {self.hero.counter_books}/{self.hero.all_books}",
@@ -625,10 +630,11 @@ class GameManager:
 
             if self.cur_dialog:
                 try:
-                    show_dialog(self.cur_dialog)
+                    show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
+                self.cur_dialog_in_progress = -1
 
         return 1, "not passed"
 
@@ -1019,12 +1025,12 @@ def active_pause_menu(image=None):
     return
 
 
-def show_dialog(data):
+def show_dialog(data, start_from=-1):
     """Принимает список кортежей [(Имя говорящего, фраза, стандартизирование имя говорящего)]"""
     bg = screen.copy()
 
     ln = len(data)
-    cur_phrase = 0
+    cur_phrase = max(start_from, 0)
     text_box = pygame_gui.elements.ui_text_box.UITextBox(
         relative_rect=pygame.Rect(70, 490, 700, 110),
         manager=UIManager,
@@ -1065,6 +1071,7 @@ def show_dialog(data):
                                  data[cur_phrase][0] + ':</font><br>- ' + data[cur_phrase][1]
             screen.blit(load_image(rf'Sprites/{data[cur_phrase][2]}/dialog_preview.png'), (6, 490))
         text_box.rebuild()
+        game.cur_dialog_in_progress = cur_phrase
 
         UIManager.update(dialog_time_delta)
         UIManager.draw_ui(screen)
@@ -1351,7 +1358,9 @@ def save_game(page, cell, preview, overwrite=False):
                      "dialog_number": game.dialog_number,
                      "hp": game.hero.health,
                      "all_books": game.hero.all_books,
-                     "collected_books": game.hero.counter_books}
+                     "collected_books": game.hero.counter_books,
+                     "cur_dialog": game.cur_dialog,
+                     "cur_dialog_in_progress": game.cur_dialog_in_progress}
         json.dump(save_data, f)
 
     with open(rf'Saves/{page}/{cell}/map.txt', 'w', encoding='utf-8') as f, \
