@@ -82,6 +82,7 @@ class Book(pygame.sprite.Sprite):
         self.image = image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
         self.mask = pygame.mask.from_surface(self.image)
+        self.pos_x = pos_x
 
 
 class BackGround(pygame.sprite.Sprite):
@@ -401,6 +402,237 @@ class AudioManager:
         pygame.mixer.music.stop()
 
 
+class GameManager:
+    def level_init(self, level_data, load_from_save=False):
+        if load_from_save:
+            page, cell = level_data
+            map_path = f'Saves/{page}/{cell}/map.txt'
+            with open(f'Saves/{page}/{cell}/data.txt', 'r', encoding='utf-8') as f:
+                load_data = json.load(f)
+            level_data = int(load_data['level'])
+        else:
+            map_path = f'Levels/level{level_data}'
+
+        story_lines = \
+            open(rf'Data/Levels/data_level{level_data}', 'r', encoding='utf-8').readlines()
+        queue = list(map(int, story_lines[1].strip().split()))
+
+        self.camera = Camera()
+        self.bg_first = \
+            BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+        self.bg_second = \
+            BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+        self.hero, self.hero_pos_x, self.hero_pos_y, self.coord_checkpoints, self.exit_pos = \
+            generate_level(load_level(map_path, is_save=load_from_save), (all_sprites, hero_group),
+                           (bound_group, all_sprites))
+        for sprite in whero_group.sprites():
+            sprite.fall()
+
+        self.queue_dialogs = [0] * len(queue)
+        self.dialogs_text = get_level_dialog(level_data)
+        for cnt, x in self.coord_checkpoints:
+            self.queue_dialogs[queue.index(cnt)] = x
+
+        self.cur_dialog = []
+        self.dialog_number = 0
+
+        if load_from_save:
+            self.dialog_number = int(load_data['dialog_number'])
+            self.hero.health = int(load_data['hp'])
+            self.hero.all_books = int(load_data['all_books'])
+            self.hero.counter_books = int(load_data['collected_books'])
+
+            self.hero.dx = max(self.hero.upper_bound - self.hero.rect.x,
+                               self.hero.lower_bound - self.hero.rect.x)
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            return self.start_level(level_data, preinited=True)
+
+    def start_level(self, level, preinited=False):
+        levels = {1: self.play_level_1, 2: self.play_level_2}
+        return levels[level](preinited)
+
+    def play_level_1(self, preinited=False):
+        if not preinited:
+            self.level_init(1)
+        audio.play_music('Level1_theme.mp3')
+
+        without_enemies_and_books_group = pygame.sprite.Group()
+        for sprite in all_sprites.sprites():
+            if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
+                without_enemies_and_books_group.add(sprite)
+
+        running_game = True
+
+        while running_game:
+            game_time_delta = clock.tick() / 1000
+
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 1, "restart"
+                return 1, "death"
+
+            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
+                    len(self.queue_dialogs) == self.dialog_number:
+                return 1, "passed"
+
+            if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
+                    self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
+                    self.hero.absolute_x + self.hero.rect.w:
+                if self.dialog_number >= 3 and self.hero.counter_books == self.hero.all_books:
+                    self.cur_dialog = self.dialogs_text[self.dialog_number]
+                    self.dialog_number += 1
+                elif self.dialog_number <= 2:
+                    self.cur_dialog = self.dialogs_text[self.dialog_number]
+                    self.dialog_number += 1
+
+            if self.dialog_number <= 2 or not enemy_group.sprites():
+                self.hero.projectile_current_time = 100
+
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key == pygame.K_ESCAPE):
+                    try:
+                        active_pause_menu()
+                    except ExitToMenuException:
+                        running_game = False
+
+                UIManager.process_events(event_game)
+
+            if self.dialog_number == 3:
+                audio.change_sound(3, HitSound)
+            else:
+                audio.change_sound(3, '')
+
+            UIManager.update(game_time_delta)
+            all_sprites.update()
+
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
+
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            screen.fill((0, 0, 0))
+
+            if self.dialog_number <= 2:
+                without_enemies_and_books_group.draw(screen)
+                self.hero.health = 100
+            else:
+                self.hero.collide_books()
+                all_sprites.draw(screen)
+
+            if self.hero.is_hitted and self.dialog_number == 3:
+                hit.draw(screen)
+
+            UIManager.draw_ui(screen)
+            if self.dialog_number != 3:
+                pygame.display.flip()
+            if self.cur_dialog:
+                try:
+                    show_dialog(self.cur_dialog)
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+
+            if self.dialog_number == 3:
+                draw_text_data([f"Собрать книги. {self.hero.counter_books}/{self.hero.all_books}",
+                                f"HP: {self.hero.health}"])
+                pygame.display.flip()
+
+        return 1, "not passed"
+
+    def play_level_2(self, preinited=False):
+        if not preinited:
+            self.level_init(2)
+        audio.play_music('Level1_theme.mp3')
+
+        all_sprites_without_Lena = pygame.sprite.Group()
+        for sprite in all_sprites.sprites():
+            if not isinstance(sprite, WHero):
+                all_sprites_without_Lena.add(sprite)
+            elif sprite.name != 'Lena':
+                all_sprites_without_Lena.add(sprite)
+
+        running_game = True
+
+        while running_game:
+            self.hero.projectile_current_time = 100
+            game_time_delta = clock.tick() / 1000
+
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 1, "restart"
+                return 1, "death"
+
+            if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
+                    self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
+                    self.hero.absolute_x + self.hero.rect.w:
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+
+            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
+                    len(self.queue_dialogs) == self.dialog_number:
+                return 2, "passed"
+
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key == pygame.K_ESCAPE):
+                    try:
+                        active_pause_menu()
+                    except ExitToMenuException:
+                        running_game = False
+
+                UIManager.process_events(event_game)
+                all_sprites.update()
+
+            UIManager.update(game_time_delta)
+            all_sprites.update()
+            self.hero.collide_books()
+
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
+
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            screen.fill((0, 0, 0))
+
+            if self.dialog_number == 2:
+                all_sprites.draw(screen)
+            else:
+                all_sprites_without_Lena.draw(screen)
+            hero_group.draw(screen)
+            if self.dialog_number == 2:
+                draw_text_data([f"Найти Лену"])
+            UIManager.draw_ui(screen)
+            pygame.display.flip()
+
+            if self.cur_dialog:
+                try:
+                    show_dialog(self.cur_dialog)
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+
+        return 1, "not passed"
+
+
 def collide_asphalt(sprite):
     """Проверяет пересечение с асфальтом и возвращает словарь в котором ключами будут:
         0, если персонаж пересекается с асфальтом снизу,
@@ -434,8 +666,9 @@ def load_image(name, colorkey=None, directory='data'):
     return image
 
 
-def load_level(filename):
-    filename = "data/" + filename
+def load_level(filename, is_save=False):
+    if not is_save:
+        filename = "data/" + filename
     with open(filename, 'r') as mapFile:
         level_map = [map_line.strip() for map_line in mapFile]
     max_width = max(map(len, level_map))
@@ -443,9 +676,11 @@ def load_level(filename):
 
 
 def generate_level(level, hero_groups, asphalt_groups):
-    # H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена,
-    # c - checkpoint место где герои разговаривают
-    # L - Лена, P - Пионер
+    """H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена,
+       e - выход с уровня, g - пол (большой спрайт асфальта),
+       c - checkpoint место где герои разговаривают,
+       L - Лена, P - Пионер
+       """
     hero, pos_x, pos_y, cnt_books = None, None, None, 0
     coord_checkpoints, cur_checkpoint, exit_pos = [], 0, 0
     for y in range(len(level)):
@@ -533,6 +768,7 @@ def move_background(bg_first, bg_second):
 
 
 def show_death_screen():
+    global LoadData
     text = pygame_gui.elements.UITextBox(
         manager=UIManager,
         relative_rect=pygame.Rect(150, 100, 550, 100),
@@ -606,7 +842,9 @@ def show_death_screen():
                         for el in [text, restart_btn, load_btn,
                                    exit_to_menu_btn, exit_from_death_btn]:
                             el.hide()
-                        show_load_screen()
+                        LoadData = show_load_screen()
+                        if LoadData is not None:
+                            return
                         for el in [text, restart_btn, load_btn,
                                    exit_to_menu_btn, exit_from_death_btn]:
                             el.show()
@@ -649,7 +887,8 @@ def show_death_screen():
         pygame.display.flip()
 
 
-def active_pause_menu(image=None, save_data=None):
+def active_pause_menu(image=None):
+    global LoadData
     # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
     # чтобы в случае сохранения сохранить его в качестве превью
     if image is None:
@@ -757,10 +996,11 @@ def active_pause_menu(image=None, save_data=None):
                             btn.hide()
 
                         if event_pause.ui_element == load_game_from_pause_btn:
-                            show_load_screen(ask_for_confirm=True)
+                            LoadData = show_load_screen(ask_for_confirm=True)
+                            if LoadData is not None:
+                                raise ExitToMenuException
                         else:
-                            show_load_screen(save_instead_of_load=True, preview=preview_to_save,
-                                             save_data=save_data)
+                            show_load_screen(save_instead_of_load=True, preview=preview_to_save)
 
                         for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
                                     exit_to_menu_btn, exit_from_pause_btn]:
@@ -844,248 +1084,6 @@ def get_level_dialog(level):
             i = i.split(' $$ ')
             tmp_dialogs.append((i[1], i[2], i[0]))
     return dialogs
-
-
-def level_1_play_game(tmp, load_flag=False, load_map=None, load_data=None):
-    audio.play_music('Level1_theme.mp3')
-    HitSound = audio.get_sound(3)
-    camera = Camera()
-    bg_first = BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
-    bg_second = BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
-    if load_flag:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
-            generate_level(load_level(load_map), (all_sprites, hero_group),
-                           (bound_group, all_sprites))
-        with open(load_data, 'r', encoding='utf-8') as file:
-            lines_load = file.readlines()
-            for line_load in lines_load:
-                pass
-    else:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
-            generate_level(load_level('Levels/level1'), (all_sprites, hero_group),
-                           (bound_group, all_sprites))
-    for sprite in whero_group.sprites():
-        sprite.fall()
-
-    without_enemies_and_books_group = pygame.sprite.Group()
-    for sprite in all_sprites.sprites():
-        if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
-            without_enemies_and_books_group.add(sprite)
-
-    queue_dialogs = [0] * len(tmp)
-    dialogs_text = get_level_dialog(1)
-    for cnt, x in coord_checkpoints:
-        queue_dialogs[tmp.index(cnt)] = x
-
-    running_game = True
-    cur_dialog = []
-    dialog_number = 0
-    while running_game:
-        game_time_delta = clock.tick() / 1000
-
-        if hero.health <= 0:
-            restart = show_death_screen()
-            if restart:
-                return 1, "restart"
-            return 1, "death"
-
-        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == \
-                dialog_number:
-            return 1, "passed"
-
-        if dialog_number < len(dialogs_text) and hero.state and \
-                hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
-            if dialog_number >= 3 and hero.counter_books == hero.all_books:
-                cur_dialog = dialogs_text[dialog_number]
-                dialog_number += 1
-            elif dialog_number <= 2:
-                cur_dialog = dialogs_text[dialog_number]
-                dialog_number += 1
-
-        if dialog_number <= 2 or not enemy_group.sprites():
-            hero.projectile_current_time = 100
-
-        for event_game in pygame.event.get():
-            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                  event_game.key == pygame.K_ESCAPE):
-                try:
-                    active_pause_menu(save_data={'dialog_number': dialog_number, 'hp': hero.health,
-                                                 'all_books': hero.all_books,
-                                                 'collected_books': hero.counter_books})
-                except ExitToMenuException:
-                    running_game = False
-
-            UIManager.process_events(event_game)
-
-        if dialog_number == 3:
-            audio.change_sound(3, HitSound)
-        else:
-            audio.change_sound(3, '')
-
-        UIManager.update(game_time_delta)
-        all_sprites.update()
-
-        # Движение BackGround`а (бесконечный фон)
-        move_background(bg_first, bg_second)
-
-        camera.update(hero)
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
-        for sprite in invisible_bound:
-            camera.apply(sprite)
-
-        screen.fill((0, 0, 0))
-
-        if dialog_number <= 2:
-            without_enemies_and_books_group.draw(screen)
-            hero.health = 100
-        else:
-            hero.collide_books()
-            all_sprites.draw(screen)
-
-        if hero.is_hitted and dialog_number == 3:
-            hit.draw(screen)
-
-        UIManager.draw_ui(screen)
-        if dialog_number != 3:
-            pygame.display.flip()
-        if cur_dialog:
-            try:
-                show_dialog(cur_dialog)
-            except ExitToMenuException:
-                running_game = False
-            cur_dialog = []
-
-        if dialog_number == 3:
-            draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}",
-                            f"HP: {hero.health}"])
-            pygame.display.flip()
-
-    return 1, "not passed"
-
-
-def level_2_play_game(tmp, load_flag=False, load_map=None, load_data=None):
-    audio.play_music('Level1_theme.mp3')
-
-    camera = Camera()
-
-    bg_first = BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
-    bg_second = BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
-
-    if load_flag:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
-            generate_level(load_level(load_map), (all_sprites, hero_group),
-                           (bound_group, all_sprites))
-        with open(load_data, 'r', encoding='utf-8') as file:
-            lines_load = file.readlines()
-            for line_load in lines_load:
-                pass
-    else:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = \
-            generate_level(load_level('Levels/level2'), (all_sprites, hero_group),
-                           (bound_group, all_sprites))
-    for sprite in whero_group.sprites():
-        sprite.fall()
-
-    all_sprites_without_Lena = pygame.sprite.Group()
-    for sprite in all_sprites.sprites():
-        if not isinstance(sprite, WHero):
-            all_sprites_without_Lena.add(sprite)
-        elif sprite.name != 'Lena':
-            all_sprites_without_Lena.add(sprite)
-
-    queue_dialogs = [0] * len(tmp)
-    dialogs_text = get_level_dialog(2)
-    for cnt, x in coord_checkpoints:
-        queue_dialogs[tmp.index(cnt)] = x
-
-    running_game = True
-    dialog_number = 0
-    cur_dialog = []
-    dialog_number = 0
-    while running_game:
-        hero.projectile_current_time = 100
-        game_time_delta = clock.tick() / 1000
-
-        if hero.health <= 0:
-            restart = show_death_screen()
-            if restart:
-                return 1, "restart"
-            return 1, "death"
-
-        if dialog_number < len(dialogs_text) and hero.state and \
-                hero.absolute_x <= queue_dialogs[dialog_number] <= hero.absolute_x + hero.rect.w:
-            cur_dialog = dialogs_text[dialog_number]
-            dialog_number += 1
-
-        if hero.absolute_x <= exit_pos <= hero.absolute_x + hero.rect.w and len(queue_dialogs) == \
-                dialog_number:
-            return 2, "passed"
-
-        for event_game in pygame.event.get():
-            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                  event_game.key == pygame.K_ESCAPE):
-                try:
-                    active_pause_menu(save_data={'dialog_number': dialog_number, 'hp': hero.health,
-                                                 'all_books': hero.all_books,
-                                                 'collected_books': hero.counter_books})
-                except ExitToMenuException:
-                    running_game = False
-
-            UIManager.process_events(event_game)
-            all_sprites.update()
-
-        UIManager.update(game_time_delta)
-        all_sprites.update()
-        hero.collide_books()
-
-        # Движение BackGround`а (бесконечный фон)
-        move_background(bg_first, bg_second)
-
-        camera.update(hero)
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
-        for sprite in invisible_bound:
-            camera.apply(sprite)
-
-        screen.fill((0, 0, 0))
-
-        if dialog_number == 2:
-            all_sprites.draw(screen)
-        else:
-            all_sprites_without_Lena.draw(screen)
-        hero_group.draw(screen)
-        if dialog_number == 2:
-            draw_text_data([f"Найти Лену"])
-        UIManager.draw_ui(screen)
-        pygame.display.flip()
-
-        if cur_dialog:
-            try:
-                show_dialog(cur_dialog)
-            except ExitToMenuException:
-                running_game = False
-            cur_dialog = []
-
-    return 1, "not passed"
-
-
-def play_game(level):  # TODO Сделать игру:D ага *****; за буквами следи;
-    """Запуск игры (игрового цикла)"""
-
-    if level == 1:
-        story_lines = open(r'Data\Levels\data_level1', 'r', encoding='utf-8').readlines()
-        queue = list(map(int, story_lines[1].strip().split()))
-        return level_1_play_game(queue)
-
-    if level == 2:
-        story_lines = open(r"Data\Levels\data_level2", 'r', encoding='utf-8').readlines()
-        queue = list(map(int, story_lines[1].strip().split()))
-        return level_2_play_game(queue)
-
-    return
 
 
 def show_achievements_storage():
@@ -1175,8 +1173,7 @@ def kill_buttons(arr):
         btn.kill()
 
 
-def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
-                     preview=None, save_data=None):
+def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=None):
     """ask_for_confirm - запрашивать ли подтверждение при загрузке
        (подтверждение необходимо в случае загрузки из меню паузы)
 
@@ -1184,7 +1181,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
 
        Также если save_instead_of_load is True,
                   необходимо передать preview - превью нового сохранения,
-                  а также save_data - данные для сохранения"""
+    """
 
     bg = load_image(r'Background/Load_screen.jpg')
 
@@ -1203,6 +1200,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
         object_id="tool_btn"
     )
 
+    load = None    # Если было загружено сохранение
     last_clicked = None
     running_load_screen = True
     confirm_func = False  # Чтобы не запутаться, подтверждён ли диалог удаления или
@@ -1223,10 +1221,11 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
                     if confirm_func:
                         if save_instead_of_load:
                             # Подтверждена попытка перезаписи сохранения
-                            save_game(current_page, last_clicked, preview, save_data, overwrite=True)
+                            save_game(current_page, last_clicked, preview, overwrite=True)
                         else:
                             # Подтверждена загрузка сохранения
-                            load_game(rf'Saves/{current_page}/{last_clicked}')
+                            load = (current_page, last_clicked)
+                            running_load_screen = False
                     else:
                         # Подтверждено удаление сохранения
                         shutil.rmtree(rf'Saves/{current_page}/{last_clicked}')
@@ -1275,7 +1274,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
                                 )
                             else:
                                 # Сохранение в новым слот - подтверждение не требуется
-                                save_game(current_page, last_clicked, preview, save_data)
+                                save_game(current_page, last_clicked, preview)
                                 kill_buttons(buttons)
                                 kill_buttons(page_buttons)
 
@@ -1299,7 +1298,8 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
                                     )
                                 else:
                                     # Загружаем
-                                    load_game(rf'Saves/{current_page}/{last_clicked}')
+                                    load = (current_page, last_clicked)
+                                    running_load_screen = False
 
                     # Нажата кнопка удаления - если выделено правильное сохранение, запросим
                     #                                                               подтверждение
@@ -1334,10 +1334,10 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False,
     kill_buttons(page_buttons)
     func_btn.kill()
     remove_btn.kill()
-    return
+    return load
 
 
-def save_game(page, cell, preview, save_data, overwrite=False):
+def save_game(page, cell, preview, overwrite=False):
     if overwrite:
         shutil.rmtree(rf'Saves/{page}/{cell}')
 
@@ -1347,6 +1347,11 @@ def save_game(page, cell, preview, save_data, overwrite=False):
         f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
 
     with open(rf'Saves/{page}/{cell}/data.txt', 'w', encoding='utf-8') as f:
+        save_data = {"level": CUR_LEVEL,
+                     "dialog_number": game.dialog_number,
+                     "hp": game.hero.health,
+                     "all_books": game.hero.all_books,
+                     "collected_books": game.hero.counter_books}
         json.dump(save_data, f)
 
     with open(rf'Saves/{page}/{cell}/map.txt', 'w', encoding='utf-8') as f, \
@@ -1359,18 +1364,17 @@ def save_game(page, cell, preview, save_data, overwrite=False):
                 if map_lines[i][j] in {'H', 'b', 'E'}:
                     map_lines[i][j] = '.'
         hr = hero_group.sprites()[0]
-        map_lines[hr.rect.y // TILE_HEIGHT][hr.absolute_x // TILE_WIDTH] = 'H'
+        map_lines[hr.rect.y // TILE_HEIGHT + 1][hr.absolute_x // TILE_WIDTH] = 'H'
         for enm in enemy_group.sprites():
-            map_lines[enm.rect.y // TILE_HEIGHT][enm.absolute_x // TILE_WIDTH] = 'E'
+            enm_pos = enm.absolute_x // TILE_WIDTH
+            while map_lines[enm.rect.y // TILE_HEIGHT + 1][enm_pos] != '.':
+                enm_pos += 1
+            map_lines[enm.rect.y // TILE_HEIGHT + 1][enm_pos] = 'E'
 
         for bk in book_group:
-            map_lines[bk.rect.y // TILE_HEIGHT][bk.rect.x // TILE_WIDTH] = 'b'
+            map_lines[bk.rect.y // TILE_HEIGHT][bk.pos_x] = 'b'
 
-        f.write('\n'.join(map(lambda x: ''.join(x), map_lines)))
-
-
-def load_game(path):  # TODO Реализовать загрузку
-    pass
+        f.write(''.join(map(lambda x: ''.join(x), map_lines)))
 
 
 def set_bus_to_hell():
@@ -1483,18 +1487,13 @@ if __name__ == '__main__':
 
     # Считывание данных файла прохождения (data.txt) и заполение данных
     FlagGoNextLevel = False
+    LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
-    MAX_LEVEL = None
-    CUR_LEVEL = None
-    START_LEVEL = 2
+    MAX_LEVEL = 2
+    CUR_LEVEL = 1
+    HitSound = audio.get_sound(3)
 
-    lines = open('data.txt', 'r', encoding='utf-8').readlines()
-    for line in lines:
-        line = line.strip()
-        if line.startswith('max_level'):
-            MAX_LEVEL = int(line.split(':')[1])
-        if line.startswith('cur_level'):
-            CUR_LEVEL = int(line.split(':')[1])
+    game = GameManager()
 
     # Объеденим базовую тему с нужными нами цветами кнопок
     with open(r'Data\Themes\theme_Base.json', 'r') as base:
@@ -1601,12 +1600,25 @@ if __name__ == '__main__':
                         hit = pygame.sprite.Group()
                         hit.add(HitEffect())
 
-                        Verdict = play_game(START_LEVEL)
+                        if LoadData is not None:
+                            LoadDataBackup = LoadData
+                            Verdict = game.level_init(LoadData, load_from_save=True)
+                            if LoadData == LoadDataBackup:
+                                LoadData = None
+                        else:
+                            Verdict = game.start_level(CUR_LEVEL)
+
                         CUR_LEVEL, FlagGoNextLevel = check_verdict(Verdict)
+                        if LoadData is not None:
+                            FlagGoNextLevel = True
                         pygame.event.Event(RestartLevelEvent)
 
                     elif event.ui_element == load_game_btn:
-                        show_load_screen()
+                        LoadData = show_load_screen()
+                        if LoadData is not None:
+                            FlagGoNextLevel = True
+                            pygame.event.Event(RestartLevelEvent)
+
                     elif event.ui_element == show_achievements_btn:
                         show_achievements_storage()
                     elif event.ui_element == exit_btn:
@@ -1628,7 +1640,5 @@ if __name__ == '__main__':
             screen.blit(image_menu, (0, 0))
         UIManager.draw_ui(screen)
         pygame.display.flip()
-
-    # Обновление файла data.txt
 
     terminate()
