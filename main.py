@@ -1603,7 +1603,7 @@ if __name__ == '__main__':
                         if LoadData is not None:
                             LoadDataBackup = LoadData
                             Verdict = game.level_init(LoadData, load_from_save=True)
-                            if LoadData == LoadDataBackup:
+                            if LoadData is LoadDataBackup:
                                 LoadData = None
                         else:
                             Verdict = game.start_level(CUR_LEVEL)
