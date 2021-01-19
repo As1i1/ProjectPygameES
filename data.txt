@@ -1,3 +1,0 @@
-max_level: 1
-cur_level: 1
-last_save: None, None
