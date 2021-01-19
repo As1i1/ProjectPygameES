@@ -1,66 +1,93 @@
-    
-    camera = Camera()
-    bg_first = BackGround(-4000, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-    bg_second = BackGround(0, DICTIONARY_SPITES['Background'], [all_sprites, background_group])
-        if load_flag:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level(load_map),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
-        with open(load_data, 'r', encoding='utf-8') as file:
-            lines_load = file.readlines()
-            for line_load in lines_load:
-                pass
-    else:
-        hero, hero_pos_x, hero_pos_y, coord_checkpoints, exit_pos = generate_level(load_level('Levels/level1'),
-                                                                                   (all_sprites, hero_group),
-                                                                                   (bound_group, all_sprites))
-    for sprite in whero_group.sprites():
-        sprite.fall()
+        if not preinited:
+            self.level_init(1)
+        audio.play_music('Level1_theme.mp3')
 
-    running_game = True
-    cur_dialog = []
-    while running_game:
-        game_time_delta = clock.tick() / 1000
+        without_enemies_and_books_group = pygame.sprite.Group()
+        for sprite in all_sprites.sprites():
+            if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
+                without_enemies_and_books_group.add(sprite)
 
-        if hero.health <= 0:
-            return
+        running_game = True
 
-        for event_game in pygame.event.get():
-            if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                  event_game.key == pygame.K_ESCAPE):
-                try:
-                    active_pause_menu()
-                except ExitToMenuException:
-                    running_game = False
+        while running_game:
+            game_time_delta = clock.tick() / 1000
 
-            UIManager.process_events(event_game)
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 1, "restart"
+                return 1, "death"
+
+            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
+                    len(self.queue_dialogs) == self.dialog_number:
+                return 1, "passed"
+
+            if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
+                    self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
+                    self.hero.absolute_x + self.hero.rect.w:
+                if self.dialog_number >= 3 and self.hero.counter_books == self.hero.all_books:
+                    self.cur_dialog = self.dialogs_text[self.dialog_number]
+                    self.dialog_number += 1
+                elif self.dialog_number <= 2:
+                    self.cur_dialog = self.dialogs_text[self.dialog_number]
+                    self.dialog_number += 1
+
+            if self.dialog_number <= 2 or not enemy_group.sprites():
+                self.hero.projectile_current_time = 100
+
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key == pygame.K_ESCAPE):
+                    try:
+                        active_pause_menu()
+                    except ExitToMenuException:
+                        running_game = False
+
+                UIManager.process_events(event_game)
+
+            if self.dialog_number == 3:
+                audio.change_sound(3, HitSound)
+            else:
+                audio.change_sound(3, '')
+
+            UIManager.update(game_time_delta)
             all_sprites.update()
 
-        UIManager.update(game_time_delta)
-        all_sprites.update()
-        hero.collide_books()
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
 
-        # Движение BackGround`а (бесконечный фон)
-        move_background(bg_first, bg_second)
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
 
-        camera.update(hero)
-        # обновляем положение всех спрайтов
-        for sprite in all_sprites:
-            camera.apply(sprite)
-        for sprite in invisible_bound:
-            camera.apply(sprite)
+            screen.fill((0, 0, 0))
 
-        screen.fill((0, 0, 0))
+            if self.dialog_number <= 2:
+                without_enemies_and_books_group.draw(screen)
+                self.hero.health = 100
+            else:
+                self.hero.collide_books()
+                all_sprites.draw(screen)
 
-        all_sprites.draw(screen)
-        hero_group.draw(screen)
-        draw_text_data([f"Собрать книги. {hero.counter_books}/{hero.all_books}", f"HP: {hero.health}"])
-        UIManager.draw_ui(screen)
-        pygame.display.flip()
+            if self.hero.is_hitted and self.dialog_number == 3:
+                hit.draw(screen)
 
-        if cur_dialog:
-            try:
-                show_dialog(cur_dialog)
-            except ExitToMenuException:
-                running_game = False
-            cur_dialog = []
+            UIManager.draw_ui(screen)
+            if self.dialog_number != 3:
+                pygame.display.flip()
+            if self.cur_dialog:
+                try:
+                    show_dialog(self.cur_dialog)
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+
+            if self.dialog_number == 3:
+                draw_text_data([f"Собрать книги. {self.hero.counter_books}/{self.hero.all_books}",
+                                f"HP: {self.hero.health}"])
+                pygame.display.flip()
+
+        return 1, "not passed"

@@ -1,1 +1,0 @@
-{"level": 1, "dialog_number": 3, "hp": 40, "all_books": 11, "collected_books": 3}
