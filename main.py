@@ -404,6 +404,8 @@ class AudioManager:
 
 class GameManager:
     def level_init(self, level_data, load_from_save=False):
+        global CUR_LEVEL
+
         if load_from_save:
             page, cell = level_data
             map_path = f'Saves/{page}/{cell}/map.txt'
@@ -438,12 +440,15 @@ class GameManager:
         self.dialog_number = 0
 
         if load_from_save:
+            CUR_LEVEL = int(load_data['level'])
             self.dialog_number = int(load_data['dialog_number'])
             self.cur_dialog = load_data['cur_dialog']
             self.hero.health = int(load_data['hp'])
             self.hero.all_books = int(load_data['all_books'])
             self.hero.counter_books = int(load_data['collected_books'])
             self.cur_dialog_in_progress = int(load_data['cur_dialog_in_progress'])
+            if self.cur_dialog_in_progress != -1:
+                self.dialog_number -= 1
 
             self.hero.dx = max(self.hero.upper_bound - self.hero.rect.x,
                                self.hero.lower_bound - self.hero.rect.x) - \
@@ -585,14 +590,16 @@ class GameManager:
                     return 1, "restart"
                 return 1, "death"
 
-            if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not self.cur_dialog \
-                    and self.hero.state and not Lena_achievement:
-                self.cur_dialog = [['Семен', 'Лена! Привет, почему ты не отвечаешь на телефон', 'Semen'],
+            if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not \
+                    self.cur_dialog and self.hero.state and not Lena_achievement:
+                self.cur_dialog = [['Семен', 'Лена! Привет, почему ты не отвечаешь на телефон',
+                                    'Semen'],
                                    ['Лена', 'А? Что? Где я? Что я здесь делаю?', 'Lena'],
                                    ['Семен', 'Что случилось?', 'Semen'],
                                    ['Лена', 'А, ой, это же мой уровень', 'Lena'],
                                    ['Семен', 'Что? Какой уровень?', 'Semen']]
                 Lena_achievement = True
+                show_gotten_achievement('2')
 
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
@@ -744,7 +751,7 @@ def draw_text_data(text):
 
 
 def terminate():
-    # Перед выходом запишем информацию о сохранениях
+    # Перед выходом запишем информацию о достижениях
     with open('Data/Achievements/statistic.json', 'w', encoding='utf-8') as f_:
         json.dump(achievements, f_)
 
@@ -1394,7 +1401,7 @@ def save_game(page, cell, preview, overwrite=False):
                 if map_lines[i][j] in {'H', 'b', 'E'}:
                     map_lines[i][j] = '.'
         hr = hero_group.sprites()[0]
-        map_lines[hr.rect.y // TILE_HEIGHT + 1][hr.absolute_x // TILE_WIDTH] = 'H'
+        map_lines[hr.rect.y // TILE_HEIGHT + 1][math.ceil(hr.absolute_x / TILE_WIDTH)] = 'H'
         for enm in enemy_group.sprites():
             enm_pos = enm.absolute_x // TILE_WIDTH
             while map_lines[enm.rect.y // TILE_HEIGHT + 1][enm_pos] != '.':
@@ -1409,6 +1416,7 @@ def save_game(page, cell, preview, overwrite=False):
 
 def show_gotten_achievement(achievement_id):
     if achievements[achievement_id]['opened'] == '0':
+        achievements[achievement_id]['opened'] = '1'
         audio.make_sound(7)
         text_box = pygame_gui.elements.UITextBox(
             manager=UIManager,
@@ -1432,7 +1440,6 @@ def set_bus_to_hell():
 
     bus_to_hell = True
     show_gotten_achievement('1')
-    achievements['1']['opened'] = '1'
     start_game_btn.hide()
     show_achievements_btn.hide()
     load_game_btn.hide()
