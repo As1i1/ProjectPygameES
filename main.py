@@ -376,7 +376,8 @@ class AudioManager:
             3: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\hit.wav'),
             4: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\collect_book.wav'),
             5: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\fall.wav'),
-            6: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\jump.wav')
+            6: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\jump.wav'),
+            7: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\achievement_sound.wav')
         }
 
     @staticmethod
@@ -1387,11 +1388,32 @@ def save_game(page, cell, preview, overwrite=False):
         f.write(''.join(map(lambda x: ''.join(x), map_lines)))
 
 
+def show_gotten_achievement(achievement_id):
+    if achievements[achievement_id]['opened'] == '0':
+        audio.make_sound(7)
+        text_box = pygame_gui.elements.UITextBox(
+            manager=UIManager,
+            relative_rect=pygame.Rect(650, 540, 145, 50),
+            html_text='',
+            object_id='#achievemets'
+        )
+
+        img, text = ACHIEVEMENTS_IMAGES[achievement_id]
+        UIManager.update(clock.tick() / 1000)
+        UIManager.draw_ui(screen)
+        screen.blit(img, (656, 544))
+        screen.blit(text, (700, 550))
+        pygame.display.flip()
+        clock.tick(1)
+        text_box.kill()
+
+
 def set_bus_to_hell():
     global bus_to_hell, image_menu
 
-    achievements['1']['opened'] = '1'
     bus_to_hell = True
+    show_gotten_achievement('1')
+    achievements['1']['opened'] = '1'
     start_game_btn.hide()
     show_achievements_btn.hide()
     load_game_btn.hide()
