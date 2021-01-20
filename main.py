@@ -7,6 +7,7 @@ import shutil
 import random
 import datetime
 import json
+import time
 
 
 class ExitToMenuException(Exception):
@@ -558,7 +559,7 @@ class GameManager:
     def play_level_2(self, preinited=False):
         if not preinited:
             self.level_init(2)
-        audio.play_music('Level1_theme.mp3')
+        audio.play_music('A Promise From Distant Days.mp3')
 
         all_sprites_without_Lena = pygame.sprite.Group()
         for sprite in all_sprites.sprites():
@@ -582,6 +583,8 @@ class GameManager:
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
                     self.hero.absolute_x + self.hero.rect.w:
+                if self.dialog_number == 1:
+                    audio.play_music("Door To Nightmare.mp3")
                 self.cur_dialog = self.dialogs_text[self.dialog_number]
                 self.dialog_number += 1
 
@@ -1621,6 +1624,8 @@ if __name__ == '__main__':
                         if CUR_LEVEL > MAX_LEVEL:
                             FlagGoNextLevel = False
                         pygame.event.Event(RestartLevelEvent)
+
+                        audio.play_music('Main_theme.mp3')
 
                     elif event.ui_element == load_game_btn:
                         LoadData = show_load_screen()
