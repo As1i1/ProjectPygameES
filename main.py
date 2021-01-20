@@ -724,6 +724,10 @@ def draw_text_data(text):
 
 
 def terminate():
+    # Перед выходом запишем информацию о сохранениях
+    with open('Data/Achievements/statistic.json', 'w', encoding='utf-8') as f_:
+        json.dump(achievements, f_)
+
     pygame.quit()
     sys.exit()
 
@@ -1096,27 +1100,26 @@ def show_achievements_storage():
     screen.blit(bg, (0, 0))
 
     img_coords = [
-        (119, 98), (398, 98), (654, 98),
-        (258, 215), (548, 215),
-        (145, 359), (398, 359), (651, 359)
+        (115, 98), (394, 98), (650, 98),
+        (254, 215), (544, 215),
+        (141, 359), (394, 359), (647, 359)
     ]
     text_coords = [
-        (92, 189), (369, 189), (625, 189),
-        (228, 307), (517, 307),
-        (115, 451), (368, 451), (622, 451)
+        (90, 188), (364, 188), (620, 188),
+        (224, 299), (514, 299),
+        (110, 443), (364, 443), (617, 443)
     ]
 
     # Перебираем и отрисовываем достижения
-    for i, achievement in enumerate(achievements):
-        if achievement[3]:
-            text = load_image(f'Achievements/{achievement[1]}')
-            img = load_image(f'Achievements/{achievement[0]}')
+    for i in range(1, 9):
+        i = str(i)
+        if achievements[i]['opened'] == "1":
+            img, text = ACHIEVEMENTS_IMAGES[i]
         else:
-            text = load_image(f'Achievements/{achievement[2]}')
-            img = load_image('Achievements/Unopened_achievement.png')
+            img, text = ACHIEVEMENTS_IMAGES['0']
 
-        screen.blit(img, img_coords[i])
-        screen.blit(text, text_coords[i])
+        screen.blit(img, img_coords[int(i) - 1])
+        screen.blit(text, text_coords[int(i) - 1])
 
     running_achievements = True
 
@@ -1387,6 +1390,7 @@ def save_game(page, cell, preview, overwrite=False):
 def set_bus_to_hell():
     global bus_to_hell, image_menu
 
+    achievements['1']['opened'] = '1'
     bus_to_hell = True
     start_game_btn.hide()
     show_achievements_btn.hide()
@@ -1464,6 +1468,26 @@ if __name__ == '__main__':
                           'OD': r'',
                           'Pioneer': load_image(r'Sprites\Semen\Pioneer_state_pos.png')}
 
+    ACHIEVEMENTS_IMAGES = {"0": (load_image('Achievements/Unopened_achievement.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "1": (load_image('Achievements/bus_to_hell.png'),
+                                 load_image('Achievements/road_to_hell.png')),
+                           "2": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "3": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "4": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "5": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "6": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "7": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png')),
+                           "8": (load_image('Achievements/unopened_title.png'),
+                                 load_image('Achievements/unopened_title.png'))
+                           }
+
     names = {'Alisa': 'Алисе', 'Miku': 'Мику', 'Lena': 'Лене', 'Slavya': 'Славе',
              'Ulyana': 'Ульяне', 'Zhenya': 'Жене', 'UVAO': 'Юле',
              'Pioneer': 'Пионеру',
@@ -1480,9 +1504,8 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode(SIZE)
     audio = AudioManager()
 
-    # Список достижений [(имя изображения, имя открытой напдиси, имя закрытой надписи,
-    #                                                            получено/не получено)]
-    achievements = [('test_img.png', 'test_font_opened.png', 'test_font_unopened.png', False)] * 8
+    with open('Data/Achievements/statistic.json', 'r', encoding='utf-8') as f:
+        achievements = json.load(f)
 
     pygame.display.set_caption('Everlasting Mario')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
