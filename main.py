@@ -561,6 +561,8 @@ class GameManager:
         if not preinited:
             self.level_init(2)
         audio.play_music('A Promise From Distant Days.mp3')
+        Lena_achievement = False
+        Lena = None
 
         all_sprites_without_Lena = pygame.sprite.Group()
         for sprite in all_sprites.sprites():
@@ -568,6 +570,8 @@ class GameManager:
                 all_sprites_without_Lena.add(sprite)
             elif sprite.name != 'Lena':
                 all_sprites_without_Lena.add(sprite)
+            else:
+                Lena = sprite
 
         running_game = True
 
@@ -580,6 +584,15 @@ class GameManager:
                 if restart:
                     return 1, "restart"
                 return 1, "death"
+
+            if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not self.cur_dialog \
+                    and self.hero.state and not Lena_achievement:
+                self.cur_dialog = [['Семен', 'Лена! Привет, почему ты не отвечаешь на телефон', 'Semen'],
+                                   ['Лена', 'А? Что? Где я? Что я здесь делаю?', 'Lena'],
+                                   ['Семен', 'Что случилось?', 'Semen'],
+                                   ['Лена', 'А, ой, это же мой уровень', 'Lena'],
+                                   ['Семен', 'Что? Какой уровень?', 'Semen']]
+                Lena_achievement = True
 
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
@@ -637,6 +650,9 @@ class GameManager:
                     running_game = False
                 self.cur_dialog = []
                 self.cur_dialog_in_progress = -1
+
+            if Lena_achievement:
+                Lena.kill()
 
         return 1, "not passed"
 
