@@ -7,7 +7,7 @@ import shutil
 import random
 import datetime
 import json
-import time
+from threading import Thread
 
 
 class ExitToMenuException(Exception):
@@ -387,6 +387,10 @@ class AudioManager:
         pygame.mixer.music.set_volume(0.15)
         pygame.mixer.music.play(-1)
 
+    @staticmethod
+    def stop_music():
+        pygame.mixer.music.stop()
+
     def make_sound(self, sound_id):
         if sound_id in self.sounds and self.sounds[sound_id] != '':
             self.sounds[sound_id].play()
@@ -396,10 +400,6 @@ class AudioManager:
 
     def get_sound(self, sound_id):
         return self.sounds[sound_id]
-
-    @staticmethod
-    def stop_music():
-        pygame.mixer.music.stop()
 
 
 class GameManager:
@@ -599,7 +599,7 @@ class GameManager:
                                    ['Лена', 'А, ой, это же мой уровень', 'Lena'],
                                    ['Семен', 'Что? Какой уровень?', 'Semen']]
                 Lena_achievement = True
-                show_gotten_achievement('2')
+                give_achievement('2')
 
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
@@ -1127,12 +1127,17 @@ def show_achievements_storage():
     screen.blit(bg, (0, 0))
 
     img_coords = [
+        (115, 98), (392, 94), (650, 98),
+        (254, 215), (544, 215),
+        (141, 359), (394, 359), (647, 359)
+    ]
+    closed_img_coords = [
         (115, 98), (394, 98), (650, 98),
         (254, 215), (544, 215),
         (141, 359), (394, 359), (647, 359)
     ]
     text_coords = [
-        (90, 188), (364, 188), (620, 188),
+        (90, 188), (370, 185), (620, 188),
         (224, 299), (514, 299),
         (110, 443), (364, 443), (617, 443)
     ]
@@ -1142,10 +1147,11 @@ def show_achievements_storage():
         i = str(i)
         if achievements[i]['opened'] == "1":
             img, text = ACHIEVEMENTS_IMAGES[i]
+            screen.blit(img, img_coords[int(i) - 1])
         else:
             img, text = ACHIEVEMENTS_IMAGES['0']
+            screen.blit(img, closed_img_coords[int(i) - 1])
 
-        screen.blit(img, img_coords[int(i) - 1])
         screen.blit(text, text_coords[int(i) - 1])
 
     running_achievements = True
@@ -1414,32 +1420,44 @@ def save_game(page, cell, preview, overwrite=False):
         f.write(''.join(map(lambda x: ''.join(x), map_lines)))
 
 
-def show_gotten_achievement(achievement_id):
+def give_achievement_core(achievement_id):
     if achievements[achievement_id]['opened'] == '0':
         achievements[achievement_id]['opened'] = '1'
         audio.make_sound(7)
         text_box = pygame_gui.elements.UITextBox(
             manager=UIManager,
-            relative_rect=pygame.Rect(650, 540, 145, 50),
+            relative_rect=pygame.Rect(650, 5, 145, 50),
             html_text='',
             object_id='#achievemets'
         )
-
         img, text = ACHIEVEMENTS_IMAGES[achievement_id]
+        ach_img = pygame_gui.elements.UIImage(
+            manager=UIManager,
+            image_surface=img,
+            relative_rect=pygame.Rect(656, 9, img.get_rect().w, img.get_rect().h)
+        )
+        ach_text = pygame_gui.elements.UIImage(
+            manager=UIManager,
+            image_surface=text,
+            relative_rect=pygame.Rect(700, 15, text.get_rect().w, text.get_rect().h)
+        )
+
         UIManager.update(clock.tick() / 1000)
         UIManager.draw_ui(screen)
-        screen.blit(img, (656, 544))
-        screen.blit(text, (700, 550))
-        pygame.display.flip()
         clock.tick(1)
-        text_box.kill()
+        kill_buttons([text_box, ach_img, ach_text])
+
+
+def give_achievement(achievement_id):
+    th = Thread(target=give_achievement_core, args=(achievement_id,))
+    th.start()
 
 
 def set_bus_to_hell():
     global bus_to_hell, image_menu
 
     bus_to_hell = True
-    show_gotten_achievement('1')
+    give_achievement('1')
     start_game_btn.hide()
     show_achievements_btn.hide()
     load_game_btn.hide()
@@ -1520,8 +1538,8 @@ if __name__ == '__main__':
                                  load_image('Achievements/unopened_title.png')),
                            "1": (load_image('Achievements/bus_to_hell.png'),
                                  load_image('Achievements/road_to_hell.png')),
-                           "2": (load_image('Achievements/unopened_title.png'),
-                                 load_image('Achievements/unopened_title.png')),
+                           "2": (load_image('Achievements/Lena-detector.png'),
+                                 load_image('Achievements/Lena-detector_text.png')),
                            "3": (load_image('Achievements/unopened_title.png'),
                                  load_image('Achievements/unopened_title.png')),
                            "4": (load_image('Achievements/unopened_title.png'),
