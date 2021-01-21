@@ -270,18 +270,13 @@ class Hero(BaseEnemy):
         self.dx = 0
 
         self.is_hitted = False  # Для отображение красного эффекта по бокам
-        self.hit_timer = 0
 
         # Частота Снарядов
         self.projectile_timer = 500
         self.projectile_current_time = 0
 
     def update(self, *args):
-        if self.hit_timer == 0:
-            self.is_hitted = False
-        else:
-            self.hit_timer -= 1
-
+        self.is_hitted = False
         keys = pygame.key.get_pressed()
         directions = []
         for key in [pygame.K_RIGHT, pygame.K_LEFT, pygame.K_UP]:
@@ -309,9 +304,7 @@ class Hero(BaseEnemy):
         collides = pygame.sprite.spritecollide(self, enemy_group, False)
         for sprite in collides:
             if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
-                audio.make_sound(3)
                 self.is_hitted = True
-                self.hit_timer = 10
                 self.health -= 20
                 sprite.cur_timer_damage = sprite.timer_damage
         self.check_bounds()
@@ -359,13 +352,6 @@ class WHero(pygame.sprite.Sprite):
         """Отрожает изображение"""
         self.image = pygame.transform.flip(self.image, True, False)
         self.is_flip = not self.is_flip
-
-
-class HitEffect(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__(hit)
-        self.image = DICTIONARY_SPRITES['HitEffect']
-        self.rect = self.image.get_rect().move(0, 0)
 
 
 class AudioManager:
@@ -420,6 +406,7 @@ class GameManager:
         queue = list(map(int, story_lines[1].strip().split()))
 
         self.cur_dialog_in_progress = -1
+        self.draw_hit_effect = False
         self.camera = Camera()
         self.bg_first = \
             BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
@@ -533,6 +520,11 @@ class GameManager:
                 self.camera.apply(sprite)
 
             screen.fill((0, 0, 0))
+            if self.hero.is_hitted and self.dialog_number == 3 and not self.draw_hit_effect:
+                self.draw_hit_effect = True
+                draw_hit_effect()
+            else:
+                self.draw_hit_effect = False
 
             if self.dialog_number <= 2:
                 without_enemies_and_books_group.draw(screen)
@@ -541,8 +533,6 @@ class GameManager:
                 self.hero.collide_books()
                 all_sprites.draw(screen)
 
-            if self.hero.is_hitted and self.dialog_number == 3:
-                hit.draw(screen)
 
             UIManager.draw_ui(screen)
             if self.dialog_number != 3:
@@ -662,6 +652,23 @@ class GameManager:
                 Lena.kill()
 
         return 1, "not passed"
+
+
+def draw_hit_effect_core():
+    audio.make_sound(3)
+    hit_effect = pygame_gui.elements.UIImage(
+        manager=UIManager,
+        image_surface=DICTIONARY_SPRITES['HitEffect'],
+        relative_rect=DICTIONARY_SPRITES['HitEffect'].get_rect()
+    )
+    UIManager.draw_ui(screen)
+    clock.tick(10)
+    hit_effect.kill()
+
+
+def draw_hit_effect():
+    th = Thread(target=draw_hit_effect_core)
+    th.start()
 
 
 def collide_asphalt(sprite):
@@ -1693,8 +1700,6 @@ if __name__ == '__main__':
                         book_group = pygame.sprite.Group()
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
-                        hit = pygame.sprite.Group()
-                        hit.add(HitEffect())
 
                         if LoadData is not None:
                             LoadDataBackup = LoadData
