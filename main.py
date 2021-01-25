@@ -77,13 +77,50 @@ class Bound(pygame.sprite.Sprite):
             TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
 
 
+class BookParticle(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites)
+        self.image = random.choice(DICTIONARY_SPRITES['BookParticles'])
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.life_time = 100
+
+    def update(self):
+        if not self.life_time:
+            self.kill()
+
+        self.life_time -= 1
+        self.rect.x += self.v[0]
+        self.rect.y += self.v[1]
+
+
 class Book(pygame.sprite.Sprite):
     def __init__(self, image, pos_x, pos_y, *groups):
         super().__init__(*groups)
         self.image = image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
+        self.base_pos_y = self.rect.y
+        self.vy = 1
+        self.move_timer = 0
+        self.particle_timer = 0
         self.mask = pygame.mask.from_surface(self.image)
         self.pos_x = pos_x
+
+    def update(self):
+        if not self.particle_timer:
+            self.particle_timer = 60
+            BookParticle(self.rect.x, self.rect.y)
+        else:
+            self.particle_timer -= 1
+
+        if not self.move_timer:
+            self.rect.y += self.vy
+            self.move_timer = 75
+            if not (self.base_pos_y <= self.rect.y <= self.base_pos_y + 10):
+                self.vy *= -1
+        else:
+            self.move_timer -= 1
 
 
 class BackGround(pygame.sprite.Sprite):
@@ -1531,6 +1568,8 @@ if __name__ == '__main__':
                           'HitEffect': load_image(r'Background\Hit_effect.png'),
                           'DeathScreen': load_image(r'Background\Death_screen.png'),
                           'DarkScreen': load_image(r'Background\Dark.png'),
+                          'BookParticles': [load_image(rf'Background\book_particle_{i}.png')
+                                            for i in range(2, 4)],
                           'Alisa': r'',
                           'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                           'Miku': r'',
@@ -1570,10 +1609,11 @@ if __name__ == '__main__':
                    'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
                    'Semen': '#F5DEB3', 'Pioneer': '#8B0000'}
 
-    # Инициализация
-    pygame.init()
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
+
+    # Инициализация
+    pygame.init()
     screen = pygame.display.set_mode(SIZE)
     audio = AudioManager()
 
