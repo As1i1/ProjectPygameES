@@ -80,19 +80,8 @@ class Bound(pygame.sprite.Sprite):
 class BookParticle(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(all_sprites)
-        self.image = random.choice(DICTIONARY_SPRITES['BookParticles'])
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.life_time = 100
-
-    def update(self):
-        if not self.life_time:
-            self.kill()
-
-        self.life_time -= 1
-        self.rect.x += self.v[0]
-        self.rect.y += self.v[1]
+        self.image = DICTIONARY_SPRITES['BookParticles']
+        self.rect = self.image.get_rect().move(x, y)
 
 
 class Book(pygame.sprite.Sprite):
@@ -103,24 +92,22 @@ class Book(pygame.sprite.Sprite):
         self.base_pos_y = self.rect.y
         self.vy = 1
         self.move_timer = 0
-        self.particle_timer = 0
         self.mask = pygame.mask.from_surface(self.image)
         self.pos_x = pos_x
+        self.effect = BookParticle(self.rect.x - 17, self.rect.y - 15)
 
     def update(self):
-        if not self.particle_timer:
-            self.particle_timer = 60
-            BookParticle(self.rect.x, self.rect.y)
-        else:
-            self.particle_timer -= 1
-
         if not self.move_timer:
             self.rect.y += self.vy
             self.move_timer = 75
-            if not (self.base_pos_y <= self.rect.y <= self.base_pos_y + 10):
+            if not (self.base_pos_y <= self.rect.y <= self.base_pos_y + 10) or collide_asphalt(self):
                 self.vy *= -1
         else:
             self.move_timer -= 1
+
+    def kill(self):
+        self.effect.kill()
+        super().kill()
 
 
 class BackGround(pygame.sprite.Sprite):
@@ -569,7 +556,7 @@ class GameManager:
             else:
                 self.hero.collide_books()
                 all_sprites.draw(screen)
-
+            book_group.draw(screen)
 
             UIManager.draw_ui(screen)
             if self.dialog_number != 3:
@@ -767,7 +754,7 @@ def generate_level(level, hero_groups, asphalt_groups):
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
-                Book(DICTIONARY_SPRITES['Element'], x, y, all_sprites, book_group)
+                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, all_sprites, book_group)
             if level[y][x] == "E":
                 Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
@@ -1486,7 +1473,6 @@ def give_achievement_core(achievement_id):
             relative_rect=pygame.Rect(700, 15, text.get_rect().w, text.get_rect().h)
         )
 
-        UIManager.update(clock.tick() / 1000)
         UIManager.draw_ui(screen)
         clock.tick(1)
         kill_buttons([text_box, ach_img, ach_text])
@@ -1560,7 +1546,6 @@ if __name__ == '__main__':
     DICTIONARY_SPRITES = {'Hero': load_image(r'Sprites\Semen\Semen_variant2.1.png'),
                           'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
                           'Background': load_image(r'Background\city_background_sunset — копия.png'),
-                          'Element': load_image(r'Background\Constructions\redbook.png'),
                           'Bound': load_image(r'Background\Constructions\asphalt.png'),
                           'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
                           'Projectile': load_image(r'Background\Constructions\bag.png'),
@@ -1568,8 +1553,9 @@ if __name__ == '__main__':
                           'HitEffect': load_image(r'Background\Hit_effect.png'),
                           'DeathScreen': load_image(r'Background\Death_screen.png'),
                           'DarkScreen': load_image(r'Background\Dark.png'),
-                          'BookParticles': [load_image(rf'Background\book_particle_{i}.png')
-                                            for i in range(2, 4)],
+                          'BookParticles': load_image(rf'Background\Constructions\effect.png'),
+                          'Books': [load_image(rf'Background\Constructions\book{i}.png')
+                                    for i in range(1, 7)],
                           'Alisa': r'',
                           'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                           'Miku': r'',
