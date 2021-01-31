@@ -8,12 +8,7 @@ import random
 import datetime
 import json
 from threading import Thread
-
-try:
-    import vlc
-except Exception:
-    print('Для работы необходим установленный видеоплеер VLC')
-    sys.exit(-1)
+import cv2
 
 
 class ExitToMenuException(Exception):
@@ -1511,35 +1506,41 @@ def set_bus_to_hell():
 
 
 def start_screen():
-    # r'Data\Video\information.mp4'
-    # r'Data\Video\start_screen.mp4'
-    vlc_instance = vlc.Instance()
-    media = vlc_instance.media_new(r'Data\Video\information.mp4')
-    player = vlc_instance.media_player_new()
-    player.set_hwnd(pygame.display.get_wm_info()['window'])
-    player.set_media(media)
-    player.play()
+    camera = cv2.VideoCapture(r'Data\Video\information.mp4')
+    i = 1
 
-    go = True
-    while player.get_state() != vlc.State.Ended and go:
+    run_video = True
+    next_video = False
+    while run_video:
         for video_event in pygame.event.get():
-            if video_event.type == pygame.QUIT or video_event.type == pygame.KEYDOWN or \
-                    video_event.type == pygame.MOUSEBUTTONDOWN:
-                go = False
-    media = vlc_instance.media_new(r'Data\Video\start_screen.mp4')
-    player.set_media(media)
-    player.play()
-    audio.play_music('Sergey Eybog - Memories.mp3')
-    go = True
-    while go:
-        if player.get_state() == vlc.State.Ended:
-            player.set_media(media)
-            player.play()
-        for video_event in pygame.event.get():
-            if video_event.type == pygame.QUIT or video_event.type == pygame.KEYDOWN or \
-                    video_event.type == pygame.MOUSEBUTTONDOWN:
-                go = False
-    player.stop()
+            if video_event.type == pygame.QUIT or video_event.type == pygame.MOUSEBUTTONDOWN or \
+                    video_event.type == pygame.KEYDOWN:
+                if i == 1:
+                    next_video = True
+                elif i == 2:
+                    i += 1
+                    camera = cv2.VideoCapture(rf'Data\Video\screen_to_{CURRENT_THEME}.mp4')
+
+        ret, frame = camera.read()
+        if not ret or next_video:
+            if i == 3:
+                break
+            next_video = False
+            camera = cv2.VideoCapture(r'Data\Video\start_screen.mp4')
+            ret, frame = camera.read()
+            if i == 1:
+                i += 1
+                audio.play_music('Sergey Eybog - Memories.mp3')
+
+        screen.fill([0, 0, 0])
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame = frame.swapaxes(0, 1)
+        pygame.surfarray.blit_array(screen, frame)
+        pygame.display.update()
+        clock.tick(30)
+
+    camera.release()
+    cv2.destroyAllWindows()
 
 
 def check_verdict(verdict):
