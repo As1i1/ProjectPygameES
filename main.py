@@ -9,6 +9,12 @@ import datetime
 import json
 from threading import Thread
 
+try:
+    import vlc
+except Exception:
+    print('Для работы необходим установленный видеоплеер VLC')
+    sys.exit(-1)
+
 
 class ExitToMenuException(Exception):
     pass
@@ -1505,7 +1511,35 @@ def set_bus_to_hell():
 
 
 def start_screen():
-    pass
+    # r'Data\Video\information.mp4'
+    # r'Data\Video\start_screen.mp4'
+    vlc_instance = vlc.Instance()
+    media = vlc_instance.media_new(r'Data\Video\information.mp4')
+    player = vlc_instance.media_player_new()
+    player.set_hwnd(pygame.display.get_wm_info()['window'])
+    player.set_media(media)
+    player.play()
+
+    go = True
+    while player.get_state() != vlc.State.Ended and go:
+        for video_event in pygame.event.get():
+            if video_event.type == pygame.QUIT or video_event.type == pygame.KEYDOWN or \
+                    video_event.type == pygame.MOUSEBUTTONDOWN:
+                go = False
+    media = vlc_instance.media_new(r'Data\Video\start_screen.mp4')
+    player.set_media(media)
+    player.play()
+    audio.play_music('Sergey Eybog - Memories.mp3')
+    go = True
+    while go:
+        if player.get_state() == vlc.State.Ended:
+            player.set_media(media)
+            player.play()
+        for video_event in pygame.event.get():
+            if video_event.type == pygame.QUIT or video_event.type == pygame.KEYDOWN or \
+                    video_event.type == pygame.MOUSEBUTTONDOWN:
+                go = False
+    player.stop()
 
 
 def check_verdict(verdict):
@@ -1601,13 +1635,16 @@ if __name__ == '__main__':
     # Инициализация
     pygame.init()
     screen = pygame.display.set_mode(SIZE)
-    audio = AudioManager()
 
     with open('Data/Achievements/statistic.json', 'r', encoding='utf-8') as f:
         achievements = json.load(f)
 
-    pygame.display.set_caption('Everlasting Mario')
+    pygame.display.set_caption('Everlasting Memories')
     pygame.display.set_icon(load_image(r'Sprites\Semen\Idle (7).png'))
+
+    clock = pygame.time.Clock()
+    audio = AudioManager()
+    start_screen()
 
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
@@ -1663,8 +1700,6 @@ if __name__ == '__main__':
     running = True
     bus_to_hell = False
     Verdict = (None, None)
-
-    clock = pygame.time.Clock()
 
     # Включаем музыку
     audio.play_music('Main_theme.mp3')
