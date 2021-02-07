@@ -143,5 +143,23 @@
        "shape": "rounded_rectangle",
        "shape_corner_radius": "23"
      }
+   },
+   "#choice_btn": {
+     "colours": {
+       "normal_bg": "#00000000",
+       "normal_border": "#00000000",
+       "normal_text": "#3f7d00",
+       "hovered_bg": "#00000000",
+       "hovered_border": "#00000000",
+       "hovered_text": "#bcffc0",
+       "active_bg": "#00000000",
+       "active_border": "#00000000",
+       "active_text": "#e3ffe5"
+     },
+     "font": {
+       "size": "45",
+       "name": "choicer",
+       "regular_path": "Data\\Fonts\\choice_font.otf"
+     }
    }
  }

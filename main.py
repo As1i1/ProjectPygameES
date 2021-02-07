@@ -512,6 +512,11 @@ class GameManager:
                 elif self.dialog_number <= 2:
                     self.cur_dialog = self.dialogs_text[self.dialog_number]
                     self.dialog_number += 1
+                if self.dialog_number == 2:
+                    try:
+                        make_choice(['Хей', 'FyMoonchika', 'Приглашаю на танец'])
+                    except ExitToMenuException:
+                        running_game = False
 
             if self.dialog_number <= 2 or not enemy_group.sprites():
                 self.hero.projectile_current_time = 100
@@ -677,6 +682,62 @@ class GameManager:
                 Lena.kill()
 
         return 1, "not passed"
+
+
+def make_choice(choices):
+    """Заставляет пользователя сделать выбор меджу вариантами, перечисленными
+       в списке choices
+       Возвращает индекс варианта, выбранного пользователем"""
+
+    if not choices:
+        raise ValueError('Нельзя сделать выбор из пустого списка')
+
+    choice_size = 50
+    height = (5 + choice_size) * len(choices)
+    top_left = (HEIGHT - height) // 2
+    dark_effect = pygame.transform.scale(DICTIONARY_SPRITES['DarkScreen'], (WIDTH - 20, height))
+    screen.blit(dark_effect, (10, top_left))
+    bg = screen.copy()
+
+    buttons = []
+    for i, choice in enumerate(choices):
+        btn = pygame_gui.elements.UIButton(
+            manager=UIManager,
+            relative_rect=pygame.Rect(15, top_left + 5 + (choice_size + 5) * i,
+                                      WIDTH - 30, choice_size),
+            text=choice,
+            object_id='#choice_btn'
+        )
+        buttons.append(btn)
+
+    run_choice = True
+    chosen = -1
+
+    while run_choice:
+        choice_time_delta = clock.tick() / 1000
+        for event_choice in pygame.event.get():
+            if event_choice.type == pygame.QUIT or (event_choice.type == pygame.KEYDOWN and
+                                                    event_choice.key == pygame.K_ESCAPE):
+                for btn in buttons:
+                    btn.hide()
+                active_pause_menu()
+                for btn in buttons:
+                    btn.show()
+            if event_choice.type == pygame.USEREVENT:
+                if event_choice.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event_choice.ui_element in buttons:
+                        chosen = buttons.index(event_choice.ui_element)
+                        run_choice = False
+
+            UIManager.process_events(event_choice)
+
+        screen.blit(bg, (0, 0))
+        UIManager.update(choice_time_delta)
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+    kill_buttons(buttons)
+    return chosen
 
 
 def draw_hit_effect_core():
