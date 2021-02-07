@@ -476,6 +476,7 @@ class GameManager:
 
     def start_level(self, level, preinited=False):
         levels = {1: self.play_level_1, 2: self.play_level_2}
+        show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
         return levels[level](preinited)
 
     def play_level_1(self, preinited=False):
@@ -682,6 +683,24 @@ class GameManager:
                 Lena.kill()
 
         return 1, "not passed"
+
+
+def show_image_smoothly(image):
+    bg = DICTIONARY_SPRITES['EmptyMenu']
+    alpha = 0
+    delta = 1
+    while True:
+        image.set_alpha(alpha)
+        alpha += delta
+        screen.blit(bg, (0, 0))
+        screen.blit(image, (0, 0))
+        pygame.display.flip()
+        clock.tick(200)
+        if alpha == 255:
+            clock.tick(1)
+            delta *= -1
+        if alpha == 0 and delta == -1:
+            break
 
 
 def make_choice(choices):
@@ -1652,6 +1671,8 @@ if __name__ == '__main__':
                           'BookParticles': load_image(rf'Background\Constructions\effect.png'),
                           'Books': [load_image(rf'Background\Constructions\book{i}.png')
                                     for i in range(1, 7)],
+                          'Level_1_into': load_image(r'Background\First_level_intro.png'),
+                          'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
                           'Alisa': r'',
                           'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                           'Miku': r'',
