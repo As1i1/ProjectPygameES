@@ -86,7 +86,7 @@ class BookParticle(pygame.sprite.Sprite):
 
 
 class Book(pygame.sprite.Sprite):
-    def __init__(self, image, pos_x, pos_y, *groups):
+    def __init__(self, image, pos_x, pos_y, number, *groups):
         super().__init__(*groups)
         self.image = image
         self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
@@ -96,6 +96,7 @@ class Book(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.pos_x = pos_x
         self.effect = BookParticle(self.rect.x - 17, self.rect.y - 15)
+        self.number = number
 
     def update(self):
         if not self.move_timer:
@@ -755,7 +756,7 @@ def generate_level(level, hero_groups, asphalt_groups):
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
-                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, all_sprites, book_group)
+                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, cnt_books, all_sprites, book_group, cnt_books)
             if level[y][x] == "E":
                 Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
