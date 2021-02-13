@@ -1,5 +1,3 @@
-        if not preinited:
-            self.level_init(1)
         audio.play_music('Level1_theme.mp3')
 
         without_enemies_and_books_group = pygame.sprite.Group()

@@ -200,7 +200,7 @@ class BaseEnemy(AnimatedSprite):
             in_fall = False
 
         # Перемещаем персонажа
-        if pygame.K_RIGHT in directions:
+        if settings['go_right'] in directions:
             if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
                     (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.is_rotate = False
@@ -209,7 +209,7 @@ class BaseEnemy(AnimatedSprite):
                 self.absolute_x += math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
-        if pygame.K_LEFT in directions:
+        if settings['go_left'] in directions:
             if (self.jump_timer % 3 < 2 and in_jump) or (self.down_timer % 3 < 2 and in_fall) or \
                     (not in_jump and not in_fall and self.vx_timer % 3 < 2):
                 self.is_rotate = True
@@ -218,7 +218,7 @@ class BaseEnemy(AnimatedSprite):
                 self.rect.x -= math.ceil(self.vx / FPS)
                 motion = True
             self.vx_timer = (self.vx_timer + 1) % 3
-        if pygame.K_UP in directions and not in_jump and not in_fall:
+        if settings['jump'] in directions and not in_jump and not in_fall:
             audio.make_sound(6)
             motion = True
             self.jump_vy = 125
@@ -263,7 +263,8 @@ class Enemy(BaseEnemy):
 
         swap = False
 
-        collide = super().update([pygame.K_LEFT if self.is_go_left else pygame.K_RIGHT])
+        collide = super().update([settings['go_left'] if self.is_go_left else
+                                  settings['go_right']])
 
         if self.absolute_x >= self.right_bound:
             swap = True
@@ -304,13 +305,14 @@ class Hero(BaseEnemy):
         self.is_hitted = False
         keys = pygame.key.get_pressed()
         directions = []
-        for key in [pygame.K_RIGHT, pygame.K_LEFT, pygame.K_UP]:
+        for key in [settings['go_right'], settings['go_left'],
+                    settings['jump']]:
             if keys[key]:
                 directions.append(key)
         super().update(directions)
 
         # Выпускание снаряда
-        if keys[pygame.K_SPACE] and self.projectile_current_time == 0:
+        if keys[settings['shoot']] and self.projectile_current_time == 0:
             audio.make_sound(2)
             if self.is_rotate:
                 Projectile(self.rect.x, self.rect.y + 10,
@@ -393,9 +395,13 @@ class AudioManager:
         }
 
     @staticmethod
+    def change_volume(volume):
+        pygame.mixer.music.set_volume(volume / 100)
+
+    @staticmethod
     def play_music(music_file_name):
         pygame.mixer.music.load(rf'Data\Audio\Music\{music_file_name}')
-        pygame.mixer.music.set_volume(0.15)
+        pygame.mixer.music.set_volume(settings['music_volume'] / 100)
         pygame.mixer.music.play(-1)
 
     @staticmethod
@@ -476,12 +482,12 @@ class GameManager:
 
     def start_level(self, level, preinited=False):
         levels = {1: self.play_level_1, 2: self.play_level_2}
-        show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
-        return levels[level](preinited)
-
-    def play_level_1(self, preinited=False):
         if not preinited:
-            self.level_init(1)
+            show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
+            self.level_init(level)
+        return levels[level]()
+
+    def play_level_1(self):
         audio.play_music('Level1_theme.mp3')
 
         without_enemies_and_books_group = pygame.sprite.Group()
@@ -524,7 +530,8 @@ class GameManager:
 
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                      event_game.key == pygame.K_ESCAPE):
+                                                      event_game.key ==
+                                                      settings['pause']):
                     try:
                         active_pause_menu()
                     except ExitToMenuException:
@@ -583,9 +590,7 @@ class GameManager:
 
         return 1, "not passed"
 
-    def play_level_2(self, preinited=False):
-        if not preinited:
-            self.level_init(2)
+    def play_level_2(self):
         audio.play_music('A Promise From Distant Days.mp3')
         Lena_achievement = False
         Lena = None
@@ -636,7 +641,8 @@ class GameManager:
 
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                      event_game.key == pygame.K_ESCAPE):
+                                                      event_game.key ==
+                                                      settings['pause']):
                     try:
                         active_pause_menu()
                     except ExitToMenuException:
@@ -685,20 +691,40 @@ class GameManager:
         return 1, "not passed"
 
 
-def show_image_smoothly(image):
-    bg = DICTIONARY_SPRITES['EmptyMenu']
-    alpha = 0
-    delta = 1
+def show_image_smoothly(image, bg_start=None, bg_end=None, mode=0):
+    """Создаёт плавный переход от bg_start к bg_end с использованием image
+       mode:
+            0 - плавное появление изображения image и его затухание
+            1 - только затухание
+            2 - только появление
+    """
+
+    if mode == 1:
+        bg = bg_end or DICTIONARY_SPRITES['Background']
+    else:
+        bg = bg_start or DICTIONARY_SPRITES['EmptyMenu']
+    alpha = 255 * (mode == 1)
+    delta = (mode == 0 or mode == 2) + (mode != 1) - 1
     while True:
+        for evnt in pygame.event.get():
+            if evnt.type == pygame.QUIT or evnt.type == pygame.KEYDOWN or \
+                    evnt.type == pygame.MOUSEBUTTONDOWN:
+                return
+
         image.set_alpha(alpha)
         alpha += delta
         screen.blit(bg, (0, 0))
         screen.blit(image, (0, 0))
         pygame.display.flip()
+
         clock.tick(200)
         if alpha == 255:
+            if mode == 2:
+                break
             clock.tick(1)
             delta *= -1
+            bg = bg_end or DICTIONARY_SPRITES['Background']
+
         if alpha == 0 and delta == -1:
             break
 
@@ -736,7 +762,8 @@ def make_choice(choices):
         choice_time_delta = clock.tick() / 1000
         for event_choice in pygame.event.get():
             if event_choice.type == pygame.QUIT or (event_choice.type == pygame.KEYDOWN and
-                                                    event_choice.key == pygame.K_ESCAPE):
+                                                    event_choice.key ==
+                                                    settings['pause']):
                 for btn in buttons:
                     btn.hide()
                 active_pause_menu()
@@ -946,83 +973,67 @@ def show_death_screen():
         text='Выйти из игры',
         object_id="#death_btn"
     )
+    death_settings_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(5, 555, 40, 40),
+        manager=UIManager,
+        text='',
+        object_id='settings_icon'
+    )
 
     death_screen = True
-    quit_game = False
 
     while death_screen:
         death_time_delta = clock.tick() / 1000
         for event_death in pygame.event.get():
             if event_death.type == pygame.QUIT:
-                pygame_gui.windows.UIConfirmationDialog(
-                    rect=pygame.Rect(250, 250, 500, 200),
-                    manager=UIManager,
-                    window_title='Подтверждение',
-                    action_short_name='Да',
-                    action_long_desc='Вы действительно хотите выйти из игры?',
-                    blocking=True
-                )
-                quit_game = True
+                if exit_confirmation_circle('Подтверждение',
+                                            'Вы действительно хотите выйти из игры?'):
+                    kill_buttons([text, restart_btn, load_btn,
+                                  exit_to_menu_btn, exit_from_death_btn])
+                    if CURRENT_THEME != 'Pioneer':
+                        terminate()
+                    else:
+
+                        set_bus_to_hell()
+                        audio.play_music('Main_theme.mp3')
+                        return
 
             if event_death.type == pygame.USEREVENT:
                 if event_death.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
                     audio.make_sound(1)
-                if event_death.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                    kill_buttons([text, restart_btn, load_btn,
-                                  exit_to_menu_btn, exit_from_death_btn])
-                    if quit_game:
-                        if CURRENT_THEME != 'Pioneer':
-                            terminate()
-                        else:
-
-                            set_bus_to_hell()
-                            audio.play_music('Main_theme.mp3')
-                            return
-
-                    else:
-                        audio.play_music('Main_theme.mp3')
-                        return
 
                 if event_death.user_type == pygame_gui.UI_BUTTON_PRESSED:
 
-                    if event_death.ui_element == load_btn:
-                        for el in [text, restart_btn, load_btn,
-                                   exit_to_menu_btn, exit_from_death_btn]:
+                    if event_death.ui_element in {load_btn, death_settings_btn}:
+                        for el in [text, restart_btn, load_btn, exit_to_menu_btn,
+                                   exit_from_death_btn, death_settings_btn]:
                             el.hide()
-                        LoadData = show_load_screen()
-                        if LoadData is not None:
-                            return
-                        for el in [text, restart_btn, load_btn,
-                                   exit_to_menu_btn, exit_from_death_btn]:
+                        if event_death.ui_element == load_btn:
+                            LoadData = show_load_screen()
+                            if LoadData is not None:
+                                return
+                        else:
+                            show_settings_menu()
+                        for el in [text, restart_btn, load_btn, exit_to_menu_btn,
+                                   exit_from_death_btn, death_settings_btn]:
                             el.show()
 
                     elif event_death.ui_element == restart_btn:
-                        kill_buttons([text, restart_btn, load_btn,
-                                      exit_to_menu_btn, exit_from_death_btn])
+                        kill_buttons([text, restart_btn, load_btn, exit_to_menu_btn,
+                                      exit_from_death_btn, death_settings_btn])
                         return True
 
                     elif event_death.ui_element == exit_to_menu_btn:
-                        pygame_gui.windows.UIConfirmationDialog(
-                            rect=pygame.Rect((250, 250), (500, 200)),
-                            manager=UIManager,
-                            window_title='Подтверждение',
-                            action_long_desc=f'Вы действительно хотите вернуться к '
-                                             f'{names[CURRENT_THEME]}?',
-                            action_short_name='О да!',
-                            blocking=True
-                        )
-                        quit_game = False
+                        if exit_confirmation_circle('Подтверждение',
+                                                    f'Вы действительно хотите вернуться к '
+                                                    f'{names[CURRENT_THEME]}?'):
+                            kill_buttons([text, restart_btn, load_btn,
+                                          exit_to_menu_btn, exit_from_death_btn])
+                            audio.play_music('Main_theme.mp3')
+                            return
 
                     elif event_death.ui_element == exit_from_death_btn:
-                        pygame_gui.windows.UIConfirmationDialog(
-                            rect=pygame.Rect(250, 250, 500, 200),
-                            manager=UIManager,
-                            window_title='Подтверждение',
-                            action_short_name='Да',
-                            action_long_desc='Вы действительно хотите выйти из игры?',
-                            blocking=True
-                        )
-                        quit_game = True
+                        pygame.event.post(pygame.event.Event(pygame.QUIT))
 
             UIManager.process_events(event_death)
 
@@ -1073,15 +1084,21 @@ def active_pause_menu(image=None):
         text='Выйти из игры',
         manager=UIManager
     )
+    pause_settings_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(5, 555, 40, 40),
+        manager=UIManager,
+        text='',
+        object_id='settings_icon'
+    )
 
     pause_activated = True
-    quit_game = False       # Чтобы не спутать подтверждение диалога выхода из игры и выхода в меню
 
     while pause_activated:
         pause_time_delta = clock.tick() / 1000
         for event_pause in pygame.event.get():
             if event_pause.type == pygame.QUIT or (event_pause.type == pygame.KEYDOWN and
-                                                   event_pause.key == pygame.K_ESCAPE):
+                                                   event_pause.key ==
+                                                   settings['pause']):
                 pause_activated = False
 
             # Закрываем игру или возвращаем константу, которая даст сигнал о выходе в меню,
@@ -1089,68 +1106,53 @@ def active_pause_menu(image=None):
             if event_pause.type == pygame.USEREVENT:
                 if event_pause.user_type == pygame_gui.UI_BUTTON_ON_HOVERED:
                     audio.make_sound(1)
-                if event_pause.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                    kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
-                                  exit_to_menu_btn, exit_from_pause_btn])
-                    if quit_game:
-                        if CURRENT_THEME != 'Pioneer':
-                            terminate()
-                        else:
-
-                            set_bus_to_hell()
-                            audio.play_music('Main_theme.mp3')
-                            raise ExitToMenuException
-
-                    else:
-                        audio.play_music('Main_theme.mp3')
-                        raise ExitToMenuException
-
                 if event_pause.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     # Попытка выхода из игры - запрашиваем подтверждение
                     if event_pause.ui_element == exit_from_pause_btn:
-                        pygame_gui.windows.UIConfirmationDialog(
-                            rect=pygame.Rect(250, 250, 500, 200),
-                            manager=UIManager,
-                            window_title='Подтверждение',
-                            action_short_name='Да',
-                            action_long_desc='Вы действительно хотите выйти из игры?',
-                            blocking=True
-                        )
-                        quit_game = True
+                        if exit_confirmation_circle('Подтверждение',
+                                                    'Вы действительно хотите выйти из игры?'):
+                            kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
+                                          exit_to_menu_btn, exit_from_pause_btn, pause_settings_btn])
+                            if CURRENT_THEME != 'Pioneer':
+                                terminate()
+                            else:
+
+                                set_bus_to_hell()
+                                audio.play_music('Main_theme.mp3')
+                                raise ExitToMenuException
 
                     # Попытка выхода в меню - запрашиваем подтверждение
                     if event_pause.ui_element == exit_to_menu_btn:
-                        quit_game = False
-                        pygame_gui.windows.UIConfirmationDialog(
-                            rect=pygame.Rect((250, 250), (500, 200)),
-                            manager=UIManager,
-                            window_title='Подтверждение',
-                            action_long_desc=f'Вы действительно хотите вернуться к '
-                                             f'{names[CURRENT_THEME]}?',
-                            action_short_name='О да!',
-                            blocking=True
-                        )
+                        if exit_confirmation_circle('Подтверждение',
+                                                    f'Вы действительно хотите вернуться '
+                                                    f'к {names[CURRENT_THEME]}?'):
+                            kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn,
+                                          exit_to_menu_btn, exit_from_pause_btn, pause_settings_btn])
+                            audio.play_music('Main_theme.mp3')
+                            raise ExitToMenuException
 
                     # Выходим из режима паузы
                     if event_pause.ui_element == release_pause_btn:
                         pause_activated = False
 
                     # Запускаем меню загрузки/сохранения, предварительно убрав с экрана кнопки
-                    if event_pause.ui_element == load_game_from_pause_btn or \
-                            event_pause.ui_element == save_game_btn:
+                    if event_pause.ui_element in {load_game_from_pause_btn, save_game_btn,
+                                                  pause_settings_btn}:
                         for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
-                                    exit_to_menu_btn, exit_from_pause_btn]:
+                                    exit_to_menu_btn, exit_from_pause_btn, pause_settings_btn]:
                             btn.hide()
 
                         if event_pause.ui_element == load_game_from_pause_btn:
                             LoadData = show_load_screen(ask_for_confirm=True)
                             if LoadData is not None:
                                 raise ExitToMenuException
-                        else:
+                        elif event_pause.ui_element == save_game_btn:
                             show_load_screen(save_instead_of_load=True, preview=preview_to_save)
+                        else:
+                            show_settings_menu()
 
                         for btn in [release_pause_btn, save_game_btn, load_game_from_pause_btn,
-                                    exit_to_menu_btn, exit_from_pause_btn]:
+                                    exit_to_menu_btn, exit_from_pause_btn, pause_settings_btn]:
                             btn.show()
 
             UIManager.process_events(event_pause)
@@ -1162,7 +1164,7 @@ def active_pause_menu(image=None):
         pygame.display.flip()
 
     kill_buttons([release_pause_btn, save_game_btn, load_game_from_pause_btn, exit_to_menu_btn,
-                  exit_from_pause_btn])
+                  exit_from_pause_btn, pause_settings_btn])
     return
 
 
@@ -1183,7 +1185,8 @@ def show_dialog(data, start_from=-1):
         dialog_time_delta = clock.tick() / 1000
         for event_dialog in pygame.event.get():
             if event_dialog.type == pygame.QUIT or (event_dialog.type == pygame.KEYDOWN and
-                                                    event_dialog.key == pygame.K_ESCAPE):
+                                                    event_dialog.key ==
+                                                    settings['pause']):
                 x = screen.copy()
                 text_box.hide()
                 active_pause_menu(x)
@@ -1194,7 +1197,8 @@ def show_dialog(data, start_from=-1):
                     cur_phrase = max(0, cur_phrase - 1)
                 elif event_dialog.button == pygame.BUTTON_LEFT:
                     cur_phrase += 1
-            elif event_dialog.type == pygame.KEYDOWN and event_dialog.key == pygame.K_SPACE:
+            elif event_dialog.type == pygame.KEYDOWN and event_dialog.key == \
+                    settings['shoot']:
                 cur_phrase += 1
 
             UIManager.process_events(event_dialog)
@@ -1271,7 +1275,8 @@ def show_achievements_storage():
     while running_achievements:
         for event_achievement in pygame.event.get():
             if event_achievement.type == pygame.QUIT or (event_achievement.type == pygame.KEYDOWN and
-                                                         event_achievement.key == pygame.K_ESCAPE):
+                                                         event_achievement.key ==
+                                                         settings['pause']):
                 running_achievements = False
 
         pygame.display.flip()
@@ -1363,7 +1368,8 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
         load_time_delta = clock.tick() / 1000
         for event_load in pygame.event.get():
             if event_load.type == pygame.QUIT or (event_load.type == pygame.KEYDOWN and
-                                                  event_load.key == pygame.K_ESCAPE):
+                                                  event_load.key ==
+                                                  settings['pause']):
                 running_load_screen = False
 
             if event_load.type == pygame.USEREVENT:
@@ -1491,14 +1497,22 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
 
 
 def save_game(page, cell, preview, overwrite=False):
+    """Сохраняет игру в клетку cell на странице page
+       preview - картинка, отображающаяся в экране загрузок,
+       overwrite - было ли до этого сохранение в этой же клетке этой страницы
+                    (нужно ли предварительное очищение папки)"""
+
+    # Если идёт перезапись - очистим папку
     if overwrite:
         shutil.rmtree(rf'Saves/{page}/{cell}')
 
+    # Создадим новую папку и сохраним в неё превью, а также время сохранения в отдельный файл
     os.makedirs(rf'Saves/{page}/{cell}')
     pygame.image.save(preview, rf'Saves/{page}/{cell}/preview.jpg')
     with open(rf'Saves/{page}/{cell}/date.txt', 'w', encoding='utf-8') as f:
         f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
 
+    # Сохраним в файл всю важную техинформацию о сессии
     with open(rf'Saves/{page}/{cell}/data.txt', 'w', encoding='utf-8') as f:
         save_data = {"level": CUR_LEVEL,
                      "dialog_number": game.dialog_number,
@@ -1509,15 +1523,21 @@ def save_game(page, cell, preview, overwrite=False):
                      "cur_dialog_in_progress": game.cur_dialog_in_progress}
         json.dump(save_data, f)
 
+    # Сохраним карту уровня (расстановку врагом, книг, главного героя и т.д.)
     with open(rf'Saves/{page}/{cell}/map.txt', 'w', encoding='utf-8') as f, \
             open(rf'Data/Levels/level{CUR_LEVEL}', 'r', encoding='utf-8') as raw_map:
+        # Скопируем изначальную карту
         map_lines = []
         for map_line in raw_map.readlines():
             map_lines.append(list(map_line))
+
+        # Удалим из неё информацию о подвижных объектах
         for i in range(len(map_lines)):
             for j in range(len(map_lines[i])):
                 if map_lines[i][j] in {'H', 'b', 'E'}:
                     map_lines[i][j] = '.'
+
+        # Вычислим расположение подвижных обхектов и сохраним эту информацию на карте
         hr = hero_group.sprites()[0]
         map_lines[hr.rect.y // TILE_HEIGHT + 1][math.ceil(hr.absolute_x / TILE_WIDTH)] = 'H'
         for enm in enemy_group.sprites():
@@ -1533,6 +1553,7 @@ def save_game(page, cell, preview, overwrite=False):
 
 
 def give_achievement_core(achievement_id):
+    """Выдаёт достижение, запоминая его получение и визиализируя это события на экране"""
     if achievements[achievement_id]['opened'] == '0':
         achievements[achievement_id]['opened'] = '1'
         audio.make_sound(7)
@@ -1560,11 +1581,15 @@ def give_achievement_core(achievement_id):
 
 
 def give_achievement(achievement_id):
+    """Оболочка для функции выдачи достижения, запускающая его на дургом ядре,
+       чтобы не останавливать процесс игры во время получение """
     th = Thread(target=give_achievement_core, args=(achievement_id,))
     th.start()
 
 
 def set_bus_to_hell():
+    """Вспомогательная функция для темы Пионера при попытке выхода"""
+
     global bus_to_hell, image_menu
 
     bus_to_hell = True
@@ -1586,6 +1611,8 @@ def set_bus_to_hell():
 
 
 def start_screen():
+    """Заставочное видео при запуске игры"""
+
     camera = cv2.VideoCapture(r'Data\Video\information.mp4')
     i = 1
 
@@ -1598,13 +1625,10 @@ def start_screen():
                 if i == 1:
                     next_video = True
                 elif i == 2:
-                    i += 1
-                    camera = cv2.VideoCapture(rf'Data\Video\screen_to_{CURRENT_THEME}.mp4')
+                    run_video = False
 
         ret, frame = camera.read()
         if not ret or next_video:
-            if i == 3:
-                break
             next_video = False
             camera = cv2.VideoCapture(r'Data\Video\start_screen.mp4')
             ret, frame = camera.read()
@@ -1624,7 +1648,8 @@ def start_screen():
 
 
 def check_verdict(verdict):
-    # Проверка как закончил уровень игрок
+    """Парсинг вердикта после завершения уровня (пройден ли уровень, какой следующий и т.д.)"""
+
     go_next_level = False
     cur_level = verdict[0]
 
@@ -1642,6 +1667,176 @@ def sum_dict(first_dict, second_dict):
     for key, value in second_dict.items():
         union_dict[key] = value
     return union_dict
+
+
+def save_new_settings(setts):
+    global settings
+    settings = setts.copy()
+    with open('Data/settings.json', 'w', encoding='utf-8') as setts_save:
+        json.dump(setts, setts_save)
+
+
+def remake_buttons(container, setts, ru_names, dy=0):
+    """Вспомогательная функция для меню настроек,
+       пересоздающая подвижные элементы при движении слайдера"""
+
+    text_array, btn_array = [], []
+    for i, (key, value) in enumerate(setts.items()):
+        text_array.append(pygame_gui.elements.UILabel(
+            manager=UIManager,
+            relative_rect=pygame.Rect(38, 50 + 40 * i - dy, 190, 35),
+            text=ru_names[key],
+            container=container,
+            object_id='settings_text'
+        ))
+        if i == 0:
+            slider = pygame_gui.elements.UIHorizontalSlider(
+                manager=UIManager,
+                container=container,
+                relative_rect=pygame.Rect(233, 50 - dy, 465, 35),
+                start_value=setts['music_volume'],
+                value_range=(0, 100),
+                object_id='slider'
+            )
+        else:
+            btn_array.append(pygame_gui.elements.UIButton(
+                manager=UIManager,
+                container=container,
+                text=pygame.key.name(value).capitalize(),
+                relative_rect=pygame.Rect(233, 50 + 40 * i - dy, 465, 35),
+                object_id="settings_button")
+            )
+
+    return slider, btn_array, text_array
+
+
+def exit_confirmation_circle(title, desc):
+    """Создаёт окно UIConfiramtionDialog с названием title и описанием desc
+       Возвращает True, если получено подтверждение; False - в ином случае"""
+
+    bg = screen.copy()
+    pygame_gui.windows.UIConfirmationDialog(
+        rect=pygame.Rect((250, 250), (500, 200)),
+        manager=UIManager,
+        window_title=title,
+        action_long_desc=desc,
+        action_short_name='Да',
+        blocking=True
+    )
+
+    while True:
+        td = clock.tick() / 1000
+        for tech_event in pygame.event.get():
+            UIManager.process_events(tech_event)
+            if tech_event.type == pygame.USEREVENT:
+                if tech_event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                    return True
+                elif tech_event.user_type == pygame_gui.UI_WINDOW_CLOSE:
+                    return False
+        screen.fill((0, 0, 0))
+        screen.blit(bg, (0, 0))
+        UIManager.update(td)
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+
+def show_settings_menu():
+    ru_names = {'music_volume': 'Громкость музыки', 'go_right': 'Идти вправо',
+                'go_left': 'Идти влево', 'jump': 'Прыжок', 'shoot': 'Выстрел',
+                'pause': 'Пауза', 'skip_quest': 'Пропустить задание'}
+    en_names = {value: key for key, value in ru_names.items()}
+
+    bg = DICTIONARY_SPRITES['Settings_bg']
+    new_settings = settings.copy()
+
+    panel = pygame_gui.elements.UIPanel(
+        manager=UIManager,
+        relative_rect=pygame.Rect(0, 0, 800, 600),
+        starting_layer_height=0,
+        object_id='#settings'
+    )
+    slider = pygame_gui.elements.UIVerticalScrollBar(
+        manager=UIManager,
+        container=panel,
+        relative_rect=pygame.Rect(715, 50, 35, 525),
+        visible_percentage=1,
+        object_id='slider'
+    )
+
+    volume_slider, buttons, texts = remake_buttons(panel, new_settings, ru_names)
+    run_settings = True
+    is_changed = False
+    key_is_changing = -1    # Индекс нажатой кнопки, значение которой нужно изменить
+
+    while run_settings:
+        settings_time_delta = clock.tick() / 1000
+        for event_settings in pygame.event.get():
+            UIManager.process_events(event_settings)
+
+            if event_settings.type == pygame.QUIT or (event_settings.type == pygame.KEYDOWN and
+                                                      event_settings.key ==
+                                                      settings['pause'] and key_is_changing == -1):
+                # Если были сделаны изменения, то запросим подтверждение сохранения новых значений
+                if is_changed:
+                    if exit_confirmation_circle('Настройки изменены', 'Сохранить изменения?'):
+                        save_new_settings(new_settings)
+                run_settings = False
+
+            elif event_settings.type == pygame.USEREVENT:
+                if event_settings.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    # Нажата кнопка, значение которой нужно изменить
+                    if event_settings.ui_element in buttons:
+                        # Если до этого была другая кнопка, но её значение так и не изменили,
+                        # то вернём ей изначальное значение
+                        if key_is_changing != -1:
+                            if buttons[key_is_changing].text == '':
+                                buttons[key_is_changing].text = \
+                                    pygame.key.name(settings[en_names[texts[key_is_changing + 1]
+                                                    .text]]).capitalize()
+                        # Запомим индекс нажатой кнопки
+                        # и вместо значение кнопки будем показывать пустое место
+                        key_is_changing = buttons.index(event_settings.ui_element)
+                        buttons[key_is_changing].text = ''
+                        for btn in buttons:
+                            btn.rebuild()
+
+            elif event_settings.type == pygame.KEYDOWN:
+                # Если нажата клавишу и до этого была выделена нужная кнопка,
+                # то изменим её значение на нажатую кнопку
+                if key_is_changing != -1:
+                    volume_slider.kill()
+                    kill_buttons(texts)
+                    kill_buttons(buttons)
+                    new_settings[en_names[texts[key_is_changing + 1].text]] = event_settings.key
+                    volume_slider, buttons, texts = remake_buttons(panel, new_settings, ru_names,
+                                                                   dy=slider.scroll_position)
+                    is_changed = True
+                    key_is_changing = -1
+
+        if slider.check_has_moved_recently():
+            # При движении вертикального слайдера вручную передвигаем все подвижыне элементы на
+            # экраны, таким образом создавая эффект пролистывания
+            volume_slider.kill()
+            kill_buttons(texts)
+            kill_buttons(buttons)
+            volume_slider, buttons, texts = remake_buttons(panel, new_settings, ru_names,
+                                                           dy=slider.scroll_position)
+
+        if volume_slider.get_current_value() != settings['music_volume']:
+            # Если изменена громкость музыки, то помимо запоминания нового значения сразу
+            # же изменим значение громкости в аудиоменеджере
+            is_changed = True
+            new_settings['music_volume'] = volume_slider.get_current_value()
+            audio.change_volume(new_settings['music_volume'])
+
+        screen.fill((0, 0, 0))
+        screen.blit(bg, (0, 0))
+        UIManager.update(settings_time_delta)
+        UIManager.draw_ui(screen)
+        pygame.display.flip()
+
+    panel.kill()
+    slider.kill()
 
 
 if __name__ == '__main__':
@@ -1671,6 +1866,7 @@ if __name__ == '__main__':
                           'BookParticles': load_image(rf'Background\Constructions\effect.png'),
                           'Books': [load_image(rf'Background\Constructions\book{i}.png')
                                     for i in range(1, 7)],
+                          'Settings_bg': load_image(rf'Background\Menu_dark.jpg'),
                           'Level_1_into': load_image(r'Background\First_level_intro.png'),
                           'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
                           'Alisa': r'',
@@ -1712,6 +1908,9 @@ if __name__ == '__main__':
                    'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
                    'Semen': '#F5DEB3', 'Pioneer': '#8B0000'}
 
+    with open('Data/settings.json', 'r', encoding='utf-8') as f:
+        settings = json.load(f)
+
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
 
@@ -1728,6 +1927,7 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
     audio = AudioManager()
     start_screen()
+    start_screen_transition = screen.copy()
 
     # Константы для позиционирования объктов
     TILE_WIDTH, TILE_HEIGHT = 50, 50
@@ -1776,7 +1976,12 @@ if __name__ == '__main__':
         text='Выйти',
         manager=UIManager
     )
-
+    settings_btn = pygame_gui.elements.UIButton(
+        relative_rect=pygame.Rect(5, 555, 40, 40),
+        manager=UIManager,
+        text='',
+        object_id='settings_icon'
+    )
     # Фон меню
     image_menu = load_image(rf'Background\Menu\{CURRENT_THEME}\Menu_normal.jpg')
 
@@ -1832,6 +2037,7 @@ if __name__ == '__main__':
                     show_achievements_btn.hide()
                     load_game_btn.hide()
                     exit_btn.hide()
+                    settings_btn.hide()
 
                     if FlagGoNextLevel or event.ui_element == start_game_btn:
                         # Создание спарйт-групп
@@ -1866,10 +2072,12 @@ if __name__ == '__main__':
                         LoadData = show_load_screen()
                         if LoadData is not None:
                             FlagGoNextLevel = True
-                            pygame.event.Event(RestartLevelEvent)
+                            pygame.event.post(pygame.event.Event(RestartLevelEvent))
 
                     elif event.ui_element == show_achievements_btn:
                         show_achievements_storage()
+                    elif event.ui_element == settings_btn:
+                        show_settings_menu()
                     elif event.ui_element == exit_btn:
                         if CURRENT_THEME != 'Pioneer':
                             confirm_exit()
@@ -1881,6 +2089,7 @@ if __name__ == '__main__':
                         show_achievements_btn.show()
                         load_game_btn.show()
                         exit_btn.show()
+                        settings_btn.show()
 
             UIManager.process_events(event)
 
@@ -1888,6 +2097,9 @@ if __name__ == '__main__':
         if not FlagGoNextLevel:
             screen.blit(image_menu, (0, 0))
         UIManager.draw_ui(screen)
+        if start_screen_transition is not None:
+            show_image_smoothly(start_screen_transition, bg_end=screen.copy(), mode=1)
+            start_screen_transition = None
         pygame.display.flip()
 
     terminate()
