@@ -7,12 +7,25 @@ import shutil
 import random
 import datetime
 import json
-from threading import Thread
 import cv2
+from functools import total_ordering
+from threading import Thread
 
 
 class ExitToMenuException(Exception):
     pass
+
+
+@total_ordering
+class INF:
+    def __init__(self, minus_inf=False):
+        self.minus = minus_inf
+
+    def __eq__(self, other):
+        return isinstance(other, INF) and self.minus == other.minus
+
+    def __gt__(self, other):
+        return self != other and not self.minus
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
@@ -119,6 +132,13 @@ class BackGround(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
 
+class MagicShield(pygame.sprite.Sprite):
+    def __init__(self, x, y, img, *groups):
+        super().__init__(*groups)
+        self.image = img
+        self.rect = self.image.get_rect().move(x, y)
+
+
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, x, y, sprite, route, *groups):
         super().__init__(*groups)
@@ -131,16 +151,47 @@ class Projectile(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
-        collides = pygame.sprite.spritecollide(self, bound_group, False)
-        for sprite in collides:
-            if pygame.sprite.collide_mask(self, sprite):
-                self.kill()
+        sprite = pygame.sprite.spritecollideany(self, bound_group)
+        if sprite:
+            if isinstance(sprite, MagicShield):
+                audio.make_sound(9)
+            self.kill()
 
         if self.vx_timer % 3 < 2 and self.route == 'Right':
             self.rect.x += math.ceil(self.vx / FPS)
         if self.vx_timer % 3 < 2 and self.route == 'Left':
             self.rect.x -= math.ceil(self.vx / FPS)
         self.vx_timer = (self.vx_timer + 1) % 3
+
+
+class FallingAsphalt(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, image, *groups, check_collide=True):
+        super().__init__(*groups)
+        self.image = image
+        self.rect = self.image.get_rect().move(
+            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
+        self.down_vy = 0
+        self.down_timer = 0
+        self.check_collide = check_collide
+        self.cur_timer_damage = 0
+        self.timer_damage = 100
+
+    def update(self):
+        if not self.check_collide or \
+                (1 not in (collide := collide_asphalt(self)) and 0 not in collide):
+            if self.down_timer == 0:
+                self.down_vy = 1
+                self.down_timer = HEIGHT
+            if self.down_timer % 3 < 2:
+                self.rect.y += math.ceil(self.down_vy / FPS)
+                self.down_vy += 1
+            self.down_timer -= 1
+        else:
+            self.down_timer = 0
+            self.down_vy = 0
+
+        if self.rect.y > 600:
+            self.kill()
 
 
 class BaseEnemy(AnimatedSprite):
@@ -248,10 +299,14 @@ class BaseEnemy(AnimatedSprite):
 
 
 class Enemy(BaseEnemy):
-    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups):
+    def __init__(self, sheet, columns, rows, pos_x, pos_y, *groups, boss_minions=False):
         super().__init__(sheet, columns, rows, pos_x, pos_y, *groups)
-        self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
-        self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
+        if not boss_minions:
+            self.left_bound = TILE_WIDTH * (pos_x - random.randint(min(3, pos_x), min(6, pos_x)))
+            self.right_bound = TILE_WIDTH * (pos_x + random.randint(3, 5))
+        else:
+            self.left_bound = INF(minus_inf=True)
+            self.right_bound = INF()
         self.is_go_left = True
 
         self.timer_damage = 200
@@ -334,6 +389,14 @@ class Hero(BaseEnemy):
                 self.is_hitted = True
                 self.health -= 20
                 sprite.cur_timer_damage = sprite.timer_damage
+
+        collides = pygame.sprite.spritecollide(self, boss_projectile_group, False)
+        for sprite in collides:
+            if pygame.sprite.collide_mask(self, sprite) and sprite.cur_timer_damage == 0:
+                self.is_hitted = True
+                self.health -= 20
+                sprite.cur_timer_damage = sprite.timer_damage
+
         self.check_bounds()
 
     def collide_books(self):
@@ -351,7 +414,7 @@ class Hero(BaseEnemy):
 
 
 class WHero(pygame.sprite.Sprite):
-    def __init__(self, image, pos_x, pos_y, name,  *groups):
+    def __init__(self, image, pos_x, pos_y, name, *groups):
         super().__init__(*groups)
         self.image = image
         self.name = name
@@ -381,6 +444,90 @@ class WHero(pygame.sprite.Sprite):
         self.is_flip = not self.is_flip
 
 
+class BossHP(pygame.sprite.Sprite):
+    def __init__(self, x, y, img, *groups):
+        super().__init__(*groups)
+        self.image = img
+        self.x, self.y = x, y
+        self.rect = self.image.get_rect().move(x, y)
+
+    def update(self, *args, **kwargs) -> None:
+        self.rect.x = self.x
+        self.rect.y = self.y
+
+
+class BossProjectile(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprite, destination_x, destination_y, *groups):
+        super().__init__(*groups)
+        self.image = sprite
+        self.rect = self.image.get_rect().move(x, y)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.cur_timer_damage = 0
+        self.timer_damage = 100
+
+        d1, d2 = destination_x - x, destination_y - y
+        self.vx = math.ceil(d1 / 200)
+        self.vy = math.ceil(d2 / 200)
+
+        if self.vx == 0 and self.vy == 0:
+            self.kill()
+
+        self.vx_timer = 1
+
+    def update(self):
+        sprite = pygame.sprite.spritecollideany(self, bound_group)
+        if sprite:
+            if not isinstance(sprite, MagicShield):
+                self.kill()
+
+        if self.vx_timer % 3 < 2:
+            self.rect.x += self.vx
+            self.rect.y += self.vy
+
+        self.vx_timer = (self.vx_timer + 1) % 3
+
+
+class Boss(WHero):
+    def __init__(self, image, pos_x, pos_y, name, *groups, hp=100):
+        super().__init__(image, pos_x, pos_y, name, *groups)
+        self.y = pos_y * TILE_HEIGHT
+        self.hp = hp
+        self.hp_image = BossHP(170, 0, DICTIONARY_SPRITES[f'boss_hp_{self.hp}'], all_sprites)
+        self.shield = MagicShield(self.rect.x - 40, self.rect.y - 25,
+                                  DICTIONARY_SPRITES['magic_shield'], all_sprites, bound_group)
+
+        self.projectile_delay = 1000
+
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+
+        collide_projectiles = pygame.sprite.spritecollide(self, projectile_group, False)
+        for sprite in collide_projectiles:
+            if pygame.sprite.collide_mask(self, sprite):
+                self.hp -= 10
+                self.hp_image.kill()
+                self.hp_image = BossHP(170, 0, DICTIONARY_SPRITES[f'boss_hp_{self.hp}'], all_sprites)
+                sprite.kill()
+
+        if not self.projectile_delay:
+            self.projectile_delay = 1000
+            BossProjectile(self.rect.x, self.rect.y, DICTIONARY_SPRITES['BossProjectile'],
+                           hero_group.sprites()[0].rect.x, hero_group.sprites()[0].rect.y,
+                           all_sprites, boss_projectile_group)
+            audio.make_sound(12)
+        else:
+            self.projectile_delay -= 1
+
+    def break_shield(self):
+        audio.make_sound(10)
+        self.shield.kill()
+        self.fall()
+
+    def kill(self):
+        self.hp_image.kill()
+        super().kill()
+
+
 class AudioManager:
     def __init__(self):
         # Загружаем звуковые эффекты
@@ -391,7 +538,12 @@ class AudioManager:
             4: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\collect_book.wav'),
             5: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\fall.wav'),
             6: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\jump.wav'),
-            7: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\achievement_sound.wav')
+            7: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\achievement_sound.wav'),
+            8: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\portal.wav'),
+            9: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\shield.wav'),
+            10: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\shield_break.wav'),
+            11: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\teleport.wav'),
+            12: pygame.mixer.Sound(rf'Data\Audio\SoundEffects\knife_throw.wav')
         }
 
     @staticmethod
@@ -457,6 +609,16 @@ class GameManager:
         self.cur_dialog = []
         self.dialog_number = 0
 
+        self.hero.dx = max(self.hero.upper_bound - self.hero.rect.x,
+                           self.hero.lower_bound - self.hero.rect.x) - \
+                       self.hero.upper_bound + self.hero.lower_bound
+        self.camera.update(self.hero)
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            self.camera.apply(sprite)
+        for sprite in invisible_bound:
+            self.camera.apply(sprite)
+
         if load_from_save:
             CUR_LEVEL = int(load_data['level'])
             self.dialog_number = int(load_data['dialog_number'])
@@ -468,22 +630,14 @@ class GameManager:
             if self.cur_dialog_in_progress != -1:
                 self.dialog_number -= 1
 
-            self.hero.dx = max(self.hero.upper_bound - self.hero.rect.x,
-                               self.hero.lower_bound - self.hero.rect.x) - \
-                self.hero.upper_bound + self.hero.lower_bound
-            self.camera.update(self.hero)
-            # обновляем положение всех спрайтов
-            for sprite in all_sprites:
-                self.camera.apply(sprite)
-            for sprite in invisible_bound:
-                self.camera.apply(sprite)
-
             return self.start_level(level_data, preinited=True)
 
     def start_level(self, level, preinited=False):
-        levels = {1: self.play_level_1, 2: self.play_level_2}
+        levels = {1: self.play_level_1, 2: self.play_level_2, 7: self.play_level_7,
+                  8: self.play_level_8}
         if not preinited:
-            show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
+            show_image_smoothly(DICTIONARY_SPRITES.get(f'Level_{level}_intro',
+                                                       pygame.Surface((800, 600))), screen.copy())
             self.level_init(level)
         return levels[level]()
 
@@ -690,6 +844,216 @@ class GameManager:
 
         return 1, "not passed"
 
+    def play_level_7(self):
+        audio.play_music('boss_phase1_theme.mp3')
+
+        check_alive = False
+        running_game = True
+        fight_starting = 0
+        rain_count = 0
+        rain_delay = 1000
+
+        rain_sprites = pygame.sprite.Group()
+
+        while running_game:
+            game_time_delta = clock.tick() / 1000
+
+            if check_alive and not len(enemy_group.sprites()):
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+                check_alive = False
+            elif self.dialog_number == 0 and self.hero.state and \
+                    self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
+                    self.hero.absolute_x + self.hero.rect.w:
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+
+            if not rain_count and rain_delay != 1000 and not len(rain_sprites.sprites()):
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+                rain_delay = 1000
+
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 7, "restart"
+                return 7, "death"
+
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key == settings['pause']):
+                    try:
+                        active_pause_menu(cant_save=True)
+                    except ExitToMenuException:
+                        running_game = False
+
+                UIManager.process_events(event_game)
+
+            UIManager.update(game_time_delta)
+            if fight_starting == 0:
+                all_sprites.update()
+            else:
+                bound_group.update()
+                fight_starting -= 1
+                if fight_starting == 0:
+                    for i in range(5):
+                        Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1,
+                              self.hero.rect.x // TILE_WIDTH - 10 + i, 9,
+                              enemy_group, all_sprites, boss_minions=True)
+                        Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1,
+                              self.hero.rect.x // TILE_WIDTH + 10 - i, 9,
+                              enemy_group, all_sprites, boss_minions=True)
+                    check_alive = True
+
+            if rain_count:
+                if rain_delay:
+                    rain_delay -= 1
+                else:
+                    rain_delay = 50 * rain_count
+                    rain_count -= 1
+                    FallingAsphalt(round(self.hero.rect.x / TILE_WIDTH), -1,
+                                   DICTIONARY_SPRITES['Bound'],
+                                   all_sprites, enemy_group, rain_sprites, check_collide=False)
+
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
+
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            screen.fill((0, 0, 0))
+            all_sprites.draw(screen)
+
+            if self.hero.is_hitted and not self.draw_hit_effect:
+                self.draw_hit_effect = True
+                draw_hit_effect()
+            else:
+                self.draw_hit_effect = False
+
+            draw_text_data([f"HP: {self.hero.health}"])
+
+            UIManager.draw_ui(screen)
+            pygame.display.flip()
+            if self.cur_dialog:
+                try:
+                    show_dialog(self.cur_dialog)
+                    if self.dialog_number == 1:
+                        for i in range(6):
+                            FallingAsphalt(self.hero.rect.x // TILE_WIDTH - 12, -i * 10,
+                                           DICTIONARY_SPRITES['Bound'], all_sprites, bound_group)
+                            fight_starting = 1000
+                    elif self.dialog_number == 2:
+                        rain_count = 20
+                    elif self.dialog_number == 3:
+                        audio.make_sound(8)
+                        return 7, "passed"
+
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+
+        return 7, "not passed"
+
+    def play_level_8(self):
+        audio.play_music('boss_phase2_theme.mp3')
+
+        left_book, right_book = book_group.sprites()
+        boss = boss_group.sprites()[0]
+        running_game = True
+        shield_activated = True
+        phase = 1
+
+        while running_game:
+            game_time_delta = clock.tick() / 1000
+
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 8, "restart"
+                return 8, "death"
+
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key == settings['pause']):
+                    try:
+                        active_pause_menu(cant_save=True)
+                    except ExitToMenuException:
+                        running_game = False
+
+                UIManager.process_events(event_game)
+
+            UIManager.update(game_time_delta)
+
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
+
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            screen.fill((0, 0, 0))
+            all_sprites.draw(screen)
+            book_group.draw(screen)
+
+            if self.hero.is_hitted and not self.draw_hit_effect:
+                self.draw_hit_effect = True
+                draw_hit_effect()
+            else:
+                self.draw_hit_effect = False
+
+            draw_text_data([f"HP: {self.hero.health}"])
+
+            UIManager.draw_ui(screen)
+            all_sprites.update()
+
+            self.hero.collide_books()
+            if shield_activated and self.hero.counter_books == self.hero.all_books:
+                boss.break_shield()
+                shield_activated = False
+                phase += 1
+            if (boss.hp == 50 and phase == 2) or (boss.hp == 20 and phase == 4):
+                lb, rb = left_book, right_book
+                if phase == 4:
+                    lb, rb = rb, lb
+                boss.kill()
+                Boss(DICTIONARY_SPRITES['Pioneer'],
+                     lb.pos_x - (self.hero.absolute_x - self.hero.rect.x) // TILE_WIDTH,
+                     lb.rect.y // TILE_HEIGHT + 1, 'Pioneer',
+                     all_sprites, boss_group, hp=70 - 20 * (phase == 4))
+                boss = boss_group.sprites()[0]
+                Book(random.choice(DICTIONARY_SPRITES['Books']),
+                     rb.pos_x - 1 - (self.hero.absolute_x - self.hero.rect.x) // TILE_WIDTH,
+                     rb.rect.y // TILE_HEIGHT, book_group, all_sprites)
+                shield_activated = True
+                self.hero.all_books += 1
+                phase += 1
+                audio.make_sound(11)
+            if boss.hp == 0 and self.dialog_number == 0:
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+
+            pygame.display.flip()
+            if self.cur_dialog:
+                try:
+                    show_dialog(self.cur_dialog)
+                    if self.dialog_number == 1:
+                        boss.kill()
+                        show_image_smoothly(DICTIONARY_SPRITES['Level_8_intro'],
+                                            screen.copy(), DICTIONARY_SPRITES['EmptyMenu'])
+                        return 8, "passed"
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+
+        return 8, "not passed"
+
 
 def show_image_smoothly(image, bg_start=None, bg_end=None, mode=0):
     """Создаёт плавный переход от bg_start к bg_end с использованием image
@@ -811,14 +1175,15 @@ def collide_asphalt(sprite):
 
     res = {}
     for collide in pygame.sprite.spritecollide(sprite, bound_group, False):
-        if abs(collide.rect.y - sprite.rect.y - sprite.rect.h) <= 5:
-            res[0] = True
-        elif abs(collide.rect.y + collide.rect.h - sprite.rect.y) <= 5:
-            res[2] = True
-        elif collide.rect.x + collide.rect.w < sprite.rect.x + sprite.rect.w:
-            res[1] = collide.rect.x + collide.rect.w
-        elif collide.rect.x > sprite.rect.x:
-            res[1] = collide.rect.x - sprite.rect.w
+        if collide != sprite:
+            if abs(collide.rect.y - sprite.rect.y - sprite.rect.h) <= 5:
+                res[0] = True
+            elif abs(collide.rect.y + collide.rect.h - sprite.rect.y) <= 5:
+                res[2] = True
+            elif collide.rect.x + collide.rect.w < sprite.rect.x + sprite.rect.w:
+                res[1] = collide.rect.x + collide.rect.w
+            elif collide.rect.x > sprite.rect.x:
+                res[1] = collide.rect.x - sprite.rect.w
     return res
 
 
@@ -849,7 +1214,7 @@ def generate_level(level, hero_groups, asphalt_groups):
     """H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена,
        e - выход с уровня, g - пол (большой спрайт асфальта),
        c - checkpoint место где герои разговаривают,
-       L - Лена, P - Пионер
+       L - Лена, P - Пионер, B - Босс
        """
     hero, pos_x, pos_y, cnt_books = None, None, None, 0
     coord_checkpoints, cur_checkpoint, exit_pos = [], 0, 0
@@ -879,6 +1244,8 @@ def generate_level(level, hero_groups, asphalt_groups):
                 WHero(DICTIONARY_SPRITES['Lena'], x, y, 'Lena', whero_group, all_sprites)
             if level[y][x] == 'P':
                 WHero(DICTIONARY_SPRITES['Pioneer'], x, y, 'Pioneer', whero_group, all_sprites)
+            if level[y][x] == 'B':
+                Boss(DICTIONARY_SPRITES['Pioneer'], x, y, 'Pioneer', all_sprites, boss_group)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -1045,7 +1412,7 @@ def show_death_screen():
         pygame.display.flip()
 
 
-def active_pause_menu(image=None):
+def active_pause_menu(image=None, cant_save=False):
     global LoadData
     # Запоминаем исходное изображение экране, уменьшенное до нужных размеров,
     # чтобы в случае сохранения сохранить его в качестве превью
@@ -1147,7 +1514,14 @@ def active_pause_menu(image=None):
                             if LoadData is not None:
                                 raise ExitToMenuException
                         elif event_pause.ui_element == save_game_btn:
-                            show_load_screen(save_instead_of_load=True, preview=preview_to_save)
+                            if not cant_save:
+                                show_load_screen(save_instead_of_load=True, preview=preview_to_save)
+                            else:
+                                pygame_gui.windows.ui_message_window.UIMessageWindow(
+                                    manager=UIManager,
+                                    rect=pygame.Rect(200, 200, 500, 200),
+                                    html_message="Хах! Привет от Пионера! Сохраниться не выйдет!"
+                                )
                         else:
                             show_settings_menu()
 
@@ -1212,7 +1586,7 @@ def show_dialog(data, start_from=-1):
         if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум":
             text_box.html_text = data[cur_phrase][1]
         else:
-            text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" +\
+            text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" + \
                                  data[cur_phrase][0] + ':</font><br>- ' + data[cur_phrase][1]
             screen.blit(load_image(rf'Sprites/{data[cur_phrase][2]}/dialog_preview.png'), (6, 490))
         text_box.rebuild()
@@ -1358,7 +1732,7 @@ def show_load_screen(ask_for_confirm=False, save_instead_of_load=False, preview=
         object_id="tool_btn"
     )
 
-    load = None    # Если было загружено сохранение
+    load = None  # Если было загружено сохранение
     last_clicked = None
     running_load_screen = True
     confirm_func = False  # Чтобы не запутаться, подтверждён ли диалог удаления или
@@ -1766,7 +2140,7 @@ def show_settings_menu():
     volume_slider, buttons, texts = remake_buttons(panel, new_settings, ru_names)
     run_settings = True
     is_changed = False
-    key_is_changing = -1    # Индекс нажатой кнопки, значение которой нужно изменить
+    key_is_changing = -1  # Индекс нажатой кнопки, значение которой нужно изменить
 
     while run_settings:
         settings_time_delta = clock.tick() / 1000
@@ -1859,6 +2233,7 @@ if __name__ == '__main__':
                           'Bound': load_image(r'Background\Constructions\asphalt.png'),
                           'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
                           'Projectile': load_image(r'Background\Constructions\bag.png'),
+                          'BossProjectile': load_image(r'Background\Constructions\knifes.png'),
                           'BigBound': load_image(r'Background\Constructions\ground.jpg'),
                           'HitEffect': load_image(r'Background\Hit_effect.png'),
                           'DeathScreen': load_image(r'Background\Death_screen.png'),
@@ -1867,8 +2242,22 @@ if __name__ == '__main__':
                           'Books': [load_image(rf'Background\Constructions\book{i}.png')
                                     for i in range(1, 7)],
                           'Settings_bg': load_image(rf'Background\Menu_dark.jpg'),
-                          'Level_1_into': load_image(r'Background\First_level_intro.png'),
+                          'Level_1_intro': load_image(r'Background\First_level_intro.png'),
+                          'Level_2_intro': load_image(r'Background\Second_level_intro.png'),
+                          'Level_8_intro': load_image(r'Background\flash.png'),
                           'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
+                          'magic_shield': load_image(r'Background\shield.png'),
+                          'boss_hp_100': load_image(r'Background\hp100.png'),
+                          'boss_hp_90': load_image(r'Background\hp90.png'),
+                          'boss_hp_80': load_image(r'Background\hp80.png'),
+                          'boss_hp_70': load_image(r'Background\hp70.png'),
+                          'boss_hp_60': load_image(r'Background\hp60.png'),
+                          'boss_hp_50': load_image(r'Background\hp50.png'),
+                          'boss_hp_40': load_image(r'Background\hp40.png'),
+                          'boss_hp_30': load_image(r'Background\hp30.png'),
+                          'boss_hp_20': load_image(r'Background\hp20.png'),
+                          'boss_hp_10': load_image(r'Background\hp10.png'),
+                          'boss_hp_0': load_image(r'Background\hp0.png'),
                           'Alisa': r'',
                           'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
                           'Miku': r'',
@@ -1938,8 +2327,8 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
-    MAX_LEVEL = 2
-    CUR_LEVEL = 1
+    MAX_LEVEL = 8
+    CUR_LEVEL = 7
     HitSound = audio.get_sound(3)
 
     game = GameManager()
@@ -2050,6 +2439,8 @@ if __name__ == '__main__':
                         book_group = pygame.sprite.Group()
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
+                        boss_group = pygame.sprite.Group()
+                        boss_projectile_group = pygame.sprite.Group()
 
                         if LoadData is not None:
                             LoadDataBackup = LoadData
