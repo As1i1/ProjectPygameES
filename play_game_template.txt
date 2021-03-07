@@ -1,13 +1,7 @@
-        audio.play_music('Level1_theme.mp3')
-
-        without_enemies_and_books_group = pygame.sprite.Group()
-        for sprite in all_sprites.sprites():
-            if not isinstance(sprite, Enemy) and not isinstance(sprite, Book):
-                without_enemies_and_books_group.add(sprite)
-
         running_game = True
 
         while running_game:
+            self.hero.projectile_current_time = 100
             game_time_delta = clock.tick() / 1000
 
             if self.hero.health <= 0:
@@ -16,40 +10,31 @@
                     return 1, "restart"
                 return 1, "death"
 
-            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
-                    len(self.queue_dialogs) == self.dialog_number:
-                return 1, "passed"
-
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
                     self.hero.absolute_x + self.hero.rect.w:
-                if self.dialog_number >= 3 and self.hero.counter_books == self.hero.all_books:
-                    self.cur_dialog = self.dialogs_text[self.dialog_number]
-                    self.dialog_number += 1
-                elif self.dialog_number <= 2:
-                    self.cur_dialog = self.dialogs_text[self.dialog_number]
-                    self.dialog_number += 1
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
 
-            if self.dialog_number <= 2 or not enemy_group.sprites():
-                self.hero.projectile_current_time = 100
+            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
+                    len(self.queue_dialogs) == self.dialog_number:
+                return 2, "passed"
 
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
-                                                      event_game.key == pygame.K_ESCAPE):
+                                                      event_game.key ==
+                                                      settings['pause']):
                     try:
                         active_pause_menu()
                     except ExitToMenuException:
                         running_game = False
 
                 UIManager.process_events(event_game)
-
-            if self.dialog_number == 3:
-                audio.change_sound(3, HitSound)
-            else:
-                audio.change_sound(3, '')
+                all_sprites.update()
 
             UIManager.update(game_time_delta)
             all_sprites.update()
+            self.hero.collide_books()
 
             # Движение BackGround`а (бесконечный фон)
             move_background(self.bg_first, self.bg_second)
@@ -63,29 +48,18 @@
 
             screen.fill((0, 0, 0))
 
-            if self.dialog_number <= 2:
-                without_enemies_and_books_group.draw(screen)
-                self.hero.health = 100
-            else:
-                self.hero.collide_books()
-                all_sprites.draw(screen)
-
-            if self.hero.is_hitted and self.dialog_number == 3:
-                hit.draw(screen)
-
+            hero_group.draw(screen)
+            if self.dialog_number == 2:
+                draw_text_data([f"Найти Лену"])
             UIManager.draw_ui(screen)
-            if self.dialog_number != 3:
-                pygame.display.flip()
+            pygame.display.flip()
+
             if self.cur_dialog:
                 try:
-                    show_dialog(self.cur_dialog)
+                    show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
-
-            if self.dialog_number == 3:
-                draw_text_data([f"Собрать книги. {self.hero.counter_books}/{self.hero.all_books}",
-                                f"HP: {self.hero.health}"])
-                pygame.display.flip()
+                self.cur_dialog_in_progress = -1
 
         return 1, "not passed"

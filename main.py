@@ -80,7 +80,7 @@ class Bound(pygame.sprite.Sprite):
 
 class BookParticle(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(all_sprites)
+        super().__init__(all_sprites, book_group)
         self.image = DICTIONARY_SPRITES['BookParticles']
         self.rect = self.image.get_rect().move(x, y)
 
@@ -371,10 +371,11 @@ class WHero(pygame.sprite.Sprite):
         if self.rect.x > game.hero.rect.x + game.hero.rect.w and self.is_flip:
             self.flip_image()
 
-    def change_pos(self, camera, x, y):
+    def change_pos(self, is_in_camera, x, y):
         """Добавляет к координате x, y,
         Параметр camera показывает должен ли персонаж в это время находится в кадре"""
-        pass
+        self.rect.x += x
+        self.rect.y += y
 
     def flip_image(self):
         """Отрожает изображение"""
@@ -482,13 +483,14 @@ class GameManager:
             return self.start_level(level_data, preinited=True)
 
     def start_level(self, level, preinited=False):
-        levels = {1: self.play_level_1, 2: self.play_level_2}
+        levels = {1: self.play_level_1, 2: self.play_level_2, 3: self.play_level_3}
         if not preinited:
             show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
             self.level_init(level)
         return levels[level]()
 
     def play_level_1(self):
+        global LP
         audio.play_music('Level1_theme.mp3')
 
         without_enemies_and_books_group = pygame.sprite.Group()
@@ -571,7 +573,6 @@ class GameManager:
             else:
                 self.hero.collide_books()
                 all_sprites.draw(screen)
-            book_group.draw(screen)
 
             UIManager.draw_ui(screen)
             if self.dialog_number != 3:
@@ -579,6 +580,8 @@ class GameManager:
             if self.cur_dialog:
                 try:
                     show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
+                    if self.cur_dialog_in_progress != -1:
+                        self.dialog_number += 1
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -589,9 +592,11 @@ class GameManager:
                                 f"HP: {self.hero.health}"])
                 pygame.display.flip()
 
+        LP['LP_Lena'] += 13
         return 1, "not passed"
 
     def play_level_2(self):
+        global LP
         audio.play_music('A Promise From Distant Days.mp3')
         Lena_achievement = False
         Lena = None
@@ -614,8 +619,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 1, "restart"
-                return 1, "death"
+                    return 2, "restart"
+                return 2, "death"
 
             if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not \
                     self.cur_dialog and self.hero.state and not Lena_achievement:
@@ -625,6 +630,7 @@ class GameManager:
                                    ['Семен', 'Что случилось?', 'Semen'],
                                    ['Лена', 'А, ой, это же мой уровень', 'Lena'],
                                    ['Семен', 'Что? Какой уровень?', 'Semen']]
+                LP['LP_Lena'] += 1
                 Lena_achievement = True
                 give_achievement('2')
 
@@ -681,6 +687,8 @@ class GameManager:
             if self.cur_dialog:
                 try:
                     show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
+                    if self.cur_dialog_in_progress != -1:
+                        self.dialog_number += 1
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -688,6 +696,140 @@ class GameManager:
 
             if Lena_achievement:
                 Lena.kill()
+
+        return 2, "not passed"
+
+    def play_level_3(self):
+        global LP
+        draw_sprites = all_sprites.copy()
+        Pioneer, Slavya = None, None
+        text = [""]
+
+        for sprite in draw_sprites.sprites():
+            if isinstance(sprite, WHero) and sprite.name == "Pioneer":
+                Pioneer = sprite
+            elif isinstance(sprite, WHero) and sprite.name == "Slavya":
+                Slavya = sprite
+
+        draw_sprites.remove(Slavya)
+
+        for sprite in book_group.sprites():
+            draw_sprites.remove(sprite)
+        for sprite in enemy_group.sprites():
+            draw_sprites.remove(sprite)
+
+        end_tasks = False
+        first_card = False
+
+        audio.play_music('I Want To Play.mp3')
+        self.camera.dx = -12000
+        for sprite in all_sprites:
+            self.camera.apply(sprite)
+        for sprite in invisible_bound:
+            self.camera.apply(sprite)
+
+        running_game = True
+
+        while running_game:
+            game_time_delta = clock.tick() / 1000
+
+            if self.hero.health <= 0:
+                restart = show_death_screen()
+                if restart:
+                    return 1, "restart"
+                return 1, "death"
+
+            if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
+                    self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
+                    self.hero.absolute_x + self.hero.rect.w and ((self.dialog_number == 2 and end_tasks) or
+                                                                 self.dialog_number != 2):
+                self.cur_dialog = self.dialogs_text[self.dialog_number]
+                self.dialog_number += 1
+                text = [""]
+                first_card = True
+                if self.dialog_number == 2:
+                    draw_sprites.remove(Pioneer)
+                    Pioneer.change_pos(False, -115 * 50, 0)
+                if self.dialog_number == 3:
+                    audio.play_music('Forest Maiden.mp3')
+                    draw_sprites.add(Slavya)
+                if self.dialog_number == 6:
+                    Slavya.change_pos(False, -43 * 50, 0)
+                if self.dialog_number == 8:
+                    audio.play_music('A Promise From Distant Days.mp3')
+                    draw_sprites.add(Pioneer)
+                    draw_sprites.remove(Slavya)
+
+            if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
+                    len(self.queue_dialogs) == self.dialog_number:
+                return 2, "passed"
+            for event_game in pygame.event.get():
+                if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
+                                                      event_game.key ==
+                                                      settings['pause']):
+                    try:
+                        active_pause_menu()
+                    except ExitToMenuException:
+                        running_game = False
+
+                if (event_game.type == pygame.KEYDOWN and event_game.key == pygame.K_j and self.dialog_number == 2) or \
+                        self.hero.counter_books == 5:
+                    end_tasks = True
+
+                UIManager.process_events(event_game)
+                all_sprites.update()
+
+            if self.dialog_number == 2 and not end_tasks:
+                text = [f"Собрать документы:{self.hero.counter_books}/6", f"HP:{self.hero.health}/100"]
+
+            if self.dialog_number == 2 and self.hero.counter_books == 6:
+                end_tasks = True
+                text = [""]
+
+            UIManager.update(game_time_delta)
+            all_sprites.update()
+            self.hero.collide_books()
+
+            # Движение BackGround`а (бесконечный фон)
+            move_background(self.bg_first, self.bg_second)
+
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
+            screen.fill((0, 0, 0))
+
+            draw_sprites.draw(screen)
+            hero_group.draw(screen)
+            draw_text_data(text)
+
+            if self.dialog_number == 2 and not first_card and not end_tasks:
+                book_group.draw(screen)
+                enemy_group.draw(screen)
+                self.hero.collide_books()
+                projectile_group.draw(screen)
+            elif self.dialog_number == 2 and first_card:
+                first_card = False
+            else:
+                self.hero.projectile_current_time = 100
+                self.hero.health = 100
+
+            UIManager.draw_ui(screen)
+            pygame.display.flip()
+
+            if self.cur_dialog:
+                try:
+                    if self.cur_dialog_in_progress != -1:
+                        self.dialog_number += 1
+                    show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
+                except ExitToMenuException:
+                    running_game = False
+                self.cur_dialog = []
+                self.cur_dialog_in_progress = -1
+
 
         return 1, "not passed"
 
@@ -850,7 +992,7 @@ def generate_level(level, hero_groups, asphalt_groups):
     """H - герой, a - асфальт, b - книга, E - враг, i - невидимая стена,
        e - выход с уровня, g - пол (большой спрайт асфальта),
        c - checkpoint место где герои разговаривают,
-       L - Лена, P - Пионер
+       L - Лена, P - Пионер, S - Славя
        """
     hero, pos_x, pos_y, cnt_books = None, None, None, 0
     coord_checkpoints, cur_checkpoint, exit_pos = [], 0, 0
@@ -863,7 +1005,7 @@ def generate_level(level, hero_groups, asphalt_groups):
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
-                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, cnt_books, all_sprites, book_group, cnt_books)
+                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, cnt_books, all_sprites, book_group)
             if level[y][x] == "E":
                 Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
@@ -877,9 +1019,11 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'e':
                 exit_pos = TILE_WIDTH * x
             if level[y][x] == 'L':
-                WHero(DICTIONARY_SPRITES['Lena'], x, y, 'Lena', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Lena']['static'], x, y, 'Lena', whero_group, all_sprites)
             if level[y][x] == 'P':
-                WHero(DICTIONARY_SPRITES['Pioneer'], x, y, 'Pioneer', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', whero_group, all_sprites)
+            if level[y][x] == 'S':
+                WHero(DICTIONARY_SPRITES['Slavya']['static'], x, y, 'Slavya', whero_group, all_sprites)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -1169,8 +1313,12 @@ def active_pause_menu(image=None):
     return
 
 
-def show_dialog(data, start_from=-1):
+def show_dialog(data, start_from=-1, queue=None):
     """Принимает список кортежей [(Имя говорящего, фраза, стандартизирование имя говорящего)]"""
+    number_queue = 0
+    if queue is None:
+        queue = []
+
     bg = screen.copy()
 
     ln = len(data)
@@ -1209,8 +1357,15 @@ def show_dialog(data, start_from=-1):
             return
 
         screen.blit(bg, (0, 0))
-
-        if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум":
+        """
+        if data[cur_phrase][0] == 'ways':
+            if len(queue) <= number_queue:
+                data[cur_phrase] = data[cur_phrase][0]
+            else:
+                data[cur_phrase] = data[cur_phrase][queue[number_queue]]
+                number_queue += 1
+        """
+        if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум" or data[cur_phrase][0] == "Разработчики":
             text_box.html_text = data[cur_phrase][1]
         else:
             text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" +\
@@ -1228,14 +1383,30 @@ def get_level_dialog(level):
     dialogs = []
     file_story = open(fr"Data\Story\Level{level}\story", "r", encoding='utf-8').readlines()
     tmp_dialogs = []
+    choice_dialog = []
+    flag_choice = False
     for i in file_story:
         i = i.strip()
         if i == '!next!':
             dialogs.append(tmp_dialogs)
             tmp_dialogs = []
+        elif i == '!or!':
+            tmp_dialogs[-1].append(choice_dialog)
+            choice_dialog = []
+        elif i == '!begin or!':
+            tmp_dialogs.append([])
+            choice_dialog = []
+            flag_choice = True
+        elif i == "!end or!":
+            tmp_dialogs[-1].append(choice_dialog)
+            choice_dialog = []
+            flag_choice = False
         else:
             i = i.split(' $$ ')
-            tmp_dialogs.append((i[1], i[2], i[0]))
+            if flag_choice:
+                choice_dialog.append((i[1], i[2], i[0]))
+            else:
+                tmp_dialogs.append((i[1], i[2], i[0]))
     return dialogs
 
 
@@ -1283,6 +1454,10 @@ def show_achievements_storage():
         pygame.display.flip()
 
     return
+
+
+def show_clock():
+    pass
 
 
 def check_saves(page):
@@ -1744,7 +1919,7 @@ def exit_confirmation_circle(title, desc):
 def show_settings_menu():
     ru_names = {'music_volume': 'Громкость музыки', 'go_right': 'Идти вправо',
                 'go_left': 'Идти влево', 'jump': 'Прыжок', 'shoot': 'Выстрел',
-                'pause': 'Пауза', 'skip_quest': 'Пропустить задание'}
+                'pause': 'Пауза', 'skip_quest': 'Завершить задание'}
     en_names = {value: key for key, value in ru_names.items()}
 
     bg = DICTIONARY_SPRITES['Settings_bg']
@@ -1871,14 +2046,16 @@ if __name__ == '__main__':
                           'Level_1_into': load_image(r'Background\First_level_intro.png'),
                           'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
                           'Alisa': r'',
-                          'Lena': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
-                          'Miku': r'',
-                          'Ulyana': r'',
-                          'Slavya': r'',
-                          'UVAO': r'',
-                          'Zhenya': r'',
-                          'OD': r'',
-                          'Pioneer': load_image(r'Sprites\Semen\Pioneer_state_pos.png')}
+                          'Lena': {'static': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'), 'dynamic': r''},
+                          'Miku': {'static': r'', 'dynamic': r''},
+                          'Ulyana': {'static': r'', 'dynamic': r''},
+                          'Slavya': {'static': load_image(r'Sprites\Slavya\Sidewalk\slavay_state_pos.png'),
+                                     'dynamic': load_image(r'Sprites\Slavya\Sidewalk\slavay2.png')},
+                          'UVAO': {'static': r'', 'dynamic': r''},
+                          'Zhenya': {'static': r'', 'dynamic': r''},
+                          'OD': {'static': r'', 'dynamic': r''},
+                          'Pioneer': {'static': load_image(r'Sprites\Semen\Pioneer_state_pos.png'),
+                                      'dynamic': load_image(r'Sprites\Semen\Semen-test2.png')}}
 
     ACHIEVEMENTS_IMAGES = {"0": (load_image('Achievements/Unopened_achievement.png'),
                                  load_image('Achievements/unopened_title.png')),
@@ -1907,10 +2084,13 @@ if __name__ == '__main__':
 
     name_colors = {'Alisa': '#fe8800', 'Lena': '#b470ff', 'Miku': '#7fffd4', 'OD': '#32CD32',
                    'Slavya': '#f2c300', 'Ulyana': '#ff533a', 'Zhenya': '#0000CD', 'UVAO': '#A0522D',
-                   'Semen': '#F5DEB3', 'Pioneer': '#8B0000'}
+                   'Semen': '#F5DEB3', 'Pioneer': '#8B0000', "None": "#F5DEB3"}
 
     with open('Data/settings.json', 'r', encoding='utf-8') as f:
         settings = json.load(f)
+
+    with open('Data/data.json', 'r', encoding='utf-8') as f:
+        LP = json.load(f)["LP"]
 
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
@@ -1939,7 +2119,7 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
-    MAX_LEVEL = 2
+    MAX_LEVEL = 3
     CUR_LEVEL = 1
     HitSound = audio.get_sound(3)
 
@@ -2102,5 +2282,8 @@ if __name__ == '__main__':
             show_image_smoothly(start_screen_transition, bg_end=screen.copy(), mode=1)
             start_screen_transition = None
         pygame.display.flip()
+
+    with open('Data/data.json', 'w', encoding='utf-8') as f:
+        json.dump({"LP": LP}, f)
 
     terminate()
