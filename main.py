@@ -592,9 +592,9 @@ class GameManager:
         self.draw_hit_effect = False
         self.camera = Camera()
         self.bg_first = \
-            BackGround(-4000, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+            BackGround(-4000, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites, background_group)
         self.bg_second = \
-            BackGround(0, DICTIONARY_SPRITES['Background'], all_sprites, background_group)
+            BackGround(0, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites, background_group)
         self.hero, self.hero_pos_x, self.hero_pos_y, self.coord_checkpoints, self.exit_pos = \
             generate_level(load_level(map_path, is_save=load_from_save), (all_sprites, hero_group),
                            (bound_group, all_sprites))
@@ -637,7 +637,8 @@ class GameManager:
                   8: self.play_level_8}
         if not preinited:
             show_image_smoothly(DICTIONARY_SPRITES.get(f'Level_{level}_intro',
-                                                       pygame.Surface((800, 600))), screen.copy())
+                                                       pygame.Surface((800, 600))), screen.copy(),
+                                DICTIONARY_SPRITES[f'Background{level}'])
             self.level_init(level)
         return levels[level]()
 
@@ -1047,7 +1048,9 @@ class GameManager:
                         boss.kill()
                         show_image_smoothly(DICTIONARY_SPRITES['Level_8_intro'],
                                             screen.copy(), DICTIONARY_SPRITES['EmptyMenu'])
-                        return 8, "passed"
+                        if self.hero.health == 100:
+                            give_achievement('3')
+                        return 7, "passed"
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -1064,7 +1067,7 @@ def show_image_smoothly(image, bg_start=None, bg_end=None, mode=0):
     """
 
     if mode == 1:
-        bg = bg_end or DICTIONARY_SPRITES['Background']
+        bg = bg_end or DICTIONARY_SPRITES['Background1']
     else:
         bg = bg_start or DICTIONARY_SPRITES['EmptyMenu']
     alpha = 255 * (mode == 1)
@@ -1087,7 +1090,7 @@ def show_image_smoothly(image, bg_start=None, bg_end=None, mode=0):
                 break
             clock.tick(1)
             delta *= -1
-            bg = bg_end or DICTIONARY_SPRITES['Background']
+            bg = bg_end or DICTIONARY_SPRITES['Background1']
 
         if alpha == 0 and delta == -1:
             break
@@ -2229,7 +2232,11 @@ if __name__ == '__main__':
 
     DICTIONARY_SPRITES = {'Hero': load_image(r'Sprites\Semen\Semen_variant2.1.png'),
                           'Enemy': load_image(r'Sprites\Semen\Semen-test2.png'),
-                          'Background': load_image(r'Background\city_background_sunset — копия.png'),
+                          'Background1': load_image(r'Background\city_background_sunset.png'),
+                          'Background2': load_image(r'Background\city_background_3.png'),
+                          'Background3': load_image(r'Background\city_background_day.png'),
+                          'Background7': load_image(r'Background\city_background_night.png'),
+                          'Background8': load_image(r'Background\city_background_night.png'),
                           'Bound': load_image(r'Background\Constructions\asphalt.png'),
                           'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
                           'Projectile': load_image(r'Background\Constructions\bag.png'),
@@ -2244,6 +2251,7 @@ if __name__ == '__main__':
                           'Settings_bg': load_image(rf'Background\Menu_dark.jpg'),
                           'Level_1_intro': load_image(r'Background\First_level_intro.png'),
                           'Level_2_intro': load_image(r'Background\Second_level_intro.png'),
+                          'Level_3_intro': load_image(r'Background\Third_level_intro.png'),
                           'Level_8_intro': load_image(r'Background\flash.png'),
                           'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
                           'magic_shield': load_image(r'Background\shield.png'),
@@ -2274,8 +2282,8 @@ if __name__ == '__main__':
                                  load_image('Achievements/road_to_hell.png')),
                            "2": (load_image('Achievements/Lena-detector.png'),
                                  load_image('Achievements/Lena-detector_text.png')),
-                           "3": (load_image('Achievements/unopened_title.png'),
-                                 load_image('Achievements/unopened_title.png')),
+                           "3": (load_image('Achievements/Invulnerable.png'),
+                                 load_image('Achievements/Invulnerable-text.png')),
                            "4": (load_image('Achievements/unopened_title.png'),
                                  load_image('Achievements/unopened_title.png')),
                            "5": (load_image('Achievements/unopened_title.png'),
@@ -2328,7 +2336,7 @@ if __name__ == '__main__':
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
     MAX_LEVEL = 8
-    CUR_LEVEL = 7
+    CUR_LEVEL = 1
     HitSound = audio.get_sound(3)
 
     game = GameManager()
