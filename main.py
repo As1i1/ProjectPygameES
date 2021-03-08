@@ -581,7 +581,7 @@ class GameManager:
         if load_from_save:
             page, cell = level_data
             map_path = f'Saves/{page}/{cell}/map.txt'
-            with open(f'Saves/{page}/{cell}/data.txt', 'r', encoding='utf-8') as f:
+            with open(f'Saves/{page}/{cell}/data.json', 'r', encoding='utf-8') as f:
                 load_data = json.load(f)
             level_data = int(load_data['level'])
             self.LP = load_data["LP"]
@@ -2064,7 +2064,7 @@ def save_game(page, cell, preview, overwrite=False):
         f.write(datetime.datetime.now().strftime("%d.%m.%Y %H:%M"))
 
     # Сохраним в файл всю важную техинформацию о сессии
-    with open(rf'Saves/{page}/{cell}/data.txt', 'w', encoding='utf-8') as f:
+    with open(rf'Saves/{page}/{cell}/data.json', 'w', encoding='utf-8') as f:
         save_data = {"level": CUR_LEVEL,
                      "dialog_number": game.dialog_number,
                      "hp": game.hero.health,
@@ -2508,7 +2508,7 @@ if __name__ == '__main__':
     # Константа шрифта
     COUNTER_BOOKS_FONT = pygame.font.Font(r'Data\Fonts\Third_font.ttf', 35)
 
-    # Считывание данных файла прохождения (data.txt) и заполение данных
+    # Считывание данных файла прохождения (data.json) и заполение данных
     FlagGoNextLevel = False
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
