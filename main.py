@@ -29,6 +29,96 @@ class INF:
         return self != other and not self.minus
 
 
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = target.dx
+        target.dx = 0
+
+
+class Bound(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, bound_image, *groups):
+        super().__init__(*groups)
+        self.image = bound_image
+        self.rect = self.image.get_rect().move(
+            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
+
+
+class BackGround(pygame.sprite.Sprite):
+    def __init__(self, pos_x, background_image, *groups):
+        super().__init__(*groups)
+        self.image = background_image
+        self.rect = self.image.get_rect().move(pos_x, 0)
+        self.mask = pygame.mask.from_surface(self.image)
+
+
+class BookParticle(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites, particles_group)
+        self.image = DICTIONARY_SPRITES['BookParticles']
+        self.rect = self.image.get_rect().move(x, y)
+
+
+class Book(pygame.sprite.Sprite):
+    def __init__(self, image, pos_x, pos_y, number, *groups):
+        super().__init__(*groups)
+        self.image = image
+        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
+        self.base_pos_y = self.rect.y
+        self.vy = 1
+        self.move_timer = 0
+        self.mask = pygame.mask.from_surface(self.image)
+        self.pos_x = pos_x
+        self.effect = BookParticle(self.rect.x - 17, self.rect.y - 15)
+        self.number = number
+
+    def update(self):
+        if not self.move_timer:
+            self.rect.y += self.vy
+            self.move_timer = 75
+            if not (self.base_pos_y <= self.rect.y <= self.base_pos_y + 10) or collide_asphalt(self):
+                self.vy *= -1
+        else:
+            self.move_timer -= 1
+
+    def kill(self):
+        self.effect.kill()
+        super().kill()
+
+
+class Projectile(pygame.sprite.Sprite):
+    def __init__(self, x, y, sprite, route, *groups):
+        super().__init__(*groups)
+        self.image = sprite
+        self.rect = self.image.get_rect().move(x, y)
+        self.route = route
+        self.vx = 100
+        self.vx_timer = 1
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def update(self):
+        sprite = pygame.sprite.spritecollideany(self, bound_group)
+        if sprite:
+            if isinstance(sprite, MagicShield):
+                audio.make_sound(9)
+            self.kill()
+
+        if self.vx_timer % 3 < 2 and self.route == 'Right':
+            self.rect.x += math.ceil(self.vx / FPS)
+        if self.vx_timer % 3 < 2 and self.route == 'Left':
+            self.rect.x -= math.ceil(self.vx / FPS)
+        self.vx_timer = (self.vx_timer + 1) % 3
+
+
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, sheet, columns, rows, *groups):
         super().__init__(*groups)
@@ -67,133 +157,6 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.timer = self.static_timer
         else:
             self.timer -= 1
-
-
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = target.dx
-        target.dx = 0
-
-
-class Bound(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, bound_image, *groups):
-        super().__init__(*groups)
-        self.image = bound_image
-        self.rect = self.image.get_rect().move(
-            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
-
-
-class BookParticle(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__(all_sprites, particles_group)
-        self.image = DICTIONARY_SPRITES['BookParticles']
-        self.rect = self.image.get_rect().move(x, y)
-
-
-class Book(pygame.sprite.Sprite):
-    def __init__(self, image, pos_x, pos_y, number, *groups):
-        super().__init__(*groups)
-        self.image = image
-        self.rect = self.image.get_rect().move(TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y + 10)
-        self.base_pos_y = self.rect.y
-        self.vy = 1
-        self.move_timer = 0
-        self.mask = pygame.mask.from_surface(self.image)
-        self.pos_x = pos_x
-        self.effect = BookParticle(self.rect.x - 17, self.rect.y - 15)
-        self.number = number
-
-    def update(self):
-        if not self.move_timer:
-            self.rect.y += self.vy
-            self.move_timer = 75
-            if not (self.base_pos_y <= self.rect.y <= self.base_pos_y + 10) or collide_asphalt(self):
-                self.vy *= -1
-        else:
-            self.move_timer -= 1
-
-    def kill(self):
-        self.effect.kill()
-        super().kill()
-
-
-class BackGround(pygame.sprite.Sprite):
-    def __init__(self, pos_x, background_image, *groups):
-        super().__init__(*groups)
-        self.image = background_image
-        self.rect = self.image.get_rect().move(pos_x, 0)
-        self.mask = pygame.mask.from_surface(self.image)
-
-
-class MagicShield(pygame.sprite.Sprite):
-    def __init__(self, x, y, img, *groups):
-        super().__init__(*groups)
-        self.image = img
-        self.rect = self.image.get_rect().move(x, y)
-
-
-class Projectile(pygame.sprite.Sprite):
-    def __init__(self, x, y, sprite, route, *groups):
-        super().__init__(*groups)
-        self.image = sprite
-        self.rect = self.image.get_rect().move(x, y)
-        self.route = route
-        self.vx = 100
-        self.vx_timer = 1
-
-        self.mask = pygame.mask.from_surface(self.image)
-
-    def update(self):
-        sprite = pygame.sprite.spritecollideany(self, bound_group)
-        if sprite:
-            if isinstance(sprite, MagicShield):
-                audio.make_sound(9)
-            self.kill()
-
-        if self.vx_timer % 3 < 2 and self.route == 'Right':
-            self.rect.x += math.ceil(self.vx / FPS)
-        if self.vx_timer % 3 < 2 and self.route == 'Left':
-            self.rect.x -= math.ceil(self.vx / FPS)
-        self.vx_timer = (self.vx_timer + 1) % 3
-
-
-class FallingAsphalt(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y, image, *groups, check_collide=True):
-        super().__init__(*groups)
-        self.image = image
-        self.rect = self.image.get_rect().move(
-            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
-        self.down_vy = 0
-        self.down_timer = 0
-        self.check_collide = check_collide
-        self.cur_timer_damage = 0
-        self.timer_damage = 100
-
-    def update(self):
-        if not self.check_collide or \
-                (1 not in (collide := collide_asphalt(self)) and 0 not in collide):
-            if self.down_timer == 0:
-                self.down_vy = 1
-                self.down_timer = HEIGHT
-            if self.down_timer % 3 < 2:
-                self.rect.y += math.ceil(self.down_vy / FPS)
-                self.down_vy += 1
-            self.down_timer -= 1
-        else:
-            self.down_timer = 0
-            self.down_vy = 0
-
-        if self.rect.y > 600:
-            self.kill()
 
 
 class BaseEnemy(AnimatedSprite):
@@ -445,6 +408,43 @@ class WHero(pygame.sprite.Sprite):
         """Отрожает изображение"""
         self.image = pygame.transform.flip(self.image, True, False)
         self.is_flip = not self.is_flip
+
+
+class FallingAsphalt(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y, image, *groups, check_collide=True):
+        super().__init__(*groups)
+        self.image = image
+        self.rect = self.image.get_rect().move(
+            TILE_WIDTH * pos_x, TILE_HEIGHT * pos_y)
+        self.down_vy = 0
+        self.down_timer = 0
+        self.check_collide = check_collide
+        self.cur_timer_damage = 0
+        self.timer_damage = 100
+
+    def update(self):
+        if not self.check_collide or \
+                (1 not in (collide := collide_asphalt(self)) and 0 not in collide):
+            if self.down_timer == 0:
+                self.down_vy = 1
+                self.down_timer = HEIGHT
+            if self.down_timer % 3 < 2:
+                self.rect.y += math.ceil(self.down_vy / FPS)
+                self.down_vy += 1
+            self.down_timer -= 1
+        else:
+            self.down_timer = 0
+            self.down_vy = 0
+
+        if self.rect.y > 600:
+            self.kill()
+
+
+class MagicShield(pygame.sprite.Sprite):
+    def __init__(self, x, y, img, *groups):
+        super().__init__(*groups)
+        self.image = img
+        self.rect = self.image.get_rect().move(x, y)
 
 
 class BossHP(pygame.sprite.Sprite):
