@@ -485,8 +485,7 @@ class GameManager:
     def start_level(self, level, preinited=False):
         levels = {1: self.play_level_1, 2: self.play_level_2, 3: self.play_level_3}
         if not preinited:
-            # show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
-            print(settings)
+            show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
             self.level_init(level)
         return levels[level]()
 
