@@ -80,7 +80,7 @@ class Bound(pygame.sprite.Sprite):
 
 class BookParticle(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        super().__init__(all_sprites, book_group)
+        super().__init__(all_sprites, particles_group)
         self.image = DICTIONARY_SPRITES['BookParticles']
         self.rect = self.image.get_rect().move(x, y)
 
@@ -485,7 +485,8 @@ class GameManager:
     def start_level(self, level, preinited=False):
         levels = {1: self.play_level_1, 2: self.play_level_2, 3: self.play_level_3}
         if not preinited:
-            show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
+            # show_image_smoothly(DICTIONARY_SPRITES[f'Level_{level}_into'])
+            print(settings)
             self.level_init(level)
         return levels[level]()
 
@@ -592,7 +593,7 @@ class GameManager:
                                 f"HP: {self.hero.health}"])
                 pygame.display.flip()
 
-        LP['LP_Lena'] += 13
+        LP['LP_Lena'] += 9
         return 1, "not passed"
 
     def play_level_2(self):
@@ -619,8 +620,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 2, "restart"
-                return 2, "death"
+                    return 1, "restart"
+                return 1, "death"
 
             if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not \
                     self.cur_dialog and self.hero.state and not Lena_achievement:
@@ -697,7 +698,7 @@ class GameManager:
             if Lena_achievement:
                 Lena.kill()
 
-        return 2, "not passed"
+        return 1, "not passed"
 
     def play_level_3(self):
         global LP
@@ -716,6 +717,8 @@ class GameManager:
         for sprite in book_group.sprites():
             draw_sprites.remove(sprite)
         for sprite in enemy_group.sprites():
+            draw_sprites.remove(sprite)
+        for sprite in particles_group.sprites():
             draw_sprites.remove(sprite)
 
         end_tasks = False
@@ -749,7 +752,8 @@ class GameManager:
                 first_card = True
                 if self.dialog_number == 2:
                     draw_sprites.remove(Pioneer)
-                    Pioneer.change_pos(False, -115 * 50, 0)
+                    Pioneer.change_pos(False, -115 * 50, -100)
+                    Pioneer.fall()
                 if self.dialog_number == 3:
                     audio.play_music('Forest Maiden.mp3')
                     draw_sprites.add(Slavya)
@@ -759,6 +763,8 @@ class GameManager:
                     audio.play_music('A Promise From Distant Days.mp3')
                     draw_sprites.add(Pioneer)
                     draw_sprites.remove(Slavya)
+                if self.dialog_number == 9:
+                    draw_sprites.remove(Pioneer)
 
             if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
                     len(self.queue_dialogs) == self.dialog_number:
@@ -772,7 +778,7 @@ class GameManager:
                     except ExitToMenuException:
                         running_game = False
 
-                if (event_game.type == pygame.KEYDOWN and event_game.key == pygame.K_j and self.dialog_number == 2) or \
+                if (event_game.type == pygame.KEYDOWN and event_game.key == settings['skip_quest'] and self.dialog_number == 2) or \
                         self.hero.counter_books == 5:
                     end_tasks = True
 
@@ -780,11 +786,17 @@ class GameManager:
                 all_sprites.update()
 
             if self.dialog_number == 2 and not end_tasks:
-                text = [f"Собрать документы:{self.hero.counter_books}/6", f"HP:{self.hero.health}/100"]
+                text = [f"Собрать документы:{self.hero.counter_books}/5", f"HP:{self.hero.health}/100"]
 
-            if self.dialog_number == 2 and self.hero.counter_books == 6:
+            if self.dialog_number == 2 and self.hero.counter_books == 5:
                 end_tasks = True
                 text = [""]
+
+            if self.hero.is_hitted and self.dialog_number == 2 and not self.draw_hit_effect:
+                self.draw_hit_effect = True
+                draw_hit_effect()
+            else:
+                self.draw_hit_effect = False
 
             UIManager.update(game_time_delta)
             all_sprites.update()
@@ -807,6 +819,7 @@ class GameManager:
             draw_text_data(text)
 
             if self.dialog_number == 2 and not first_card and not end_tasks:
+                particles_group.draw(screen)
                 book_group.draw(screen)
                 enemy_group.draw(screen)
                 self.hero.collide_books()
@@ -830,6 +843,7 @@ class GameManager:
                 self.cur_dialog = []
                 self.cur_dialog_in_progress = -1
 
+        LP['LP_Slavya'] += self.hero.counter_books * 2
 
         return 1, "not passed"
 
@@ -2120,7 +2134,7 @@ if __name__ == '__main__':
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
     MAX_LEVEL = 3
-    CUR_LEVEL = 1
+    CUR_LEVEL = 3
     HitSound = audio.get_sound(3)
 
     game = GameManager()
@@ -2231,6 +2245,7 @@ if __name__ == '__main__':
                         book_group = pygame.sprite.Group()
                         projectile_group = pygame.sprite.Group()
                         invisible_bound = pygame.sprite.Group()
+                        particles_group = pygame.sprite.Group()
 
                         if LoadData is not None:
                             LoadDataBackup = LoadData
