@@ -1,1 +1,1 @@
-{"level": 1, "dialog_number": 3, "hp": 100, "all_books": 11, "collected_books": 0, "cur_dialog": [], "cur_dialog_in_progress": -1}
+{"level": 1, "dialog_number": 3, "hp": 20, "all_books": 11, "collected_books": 8, "cur_dialog": [], "cur_dialog_in_progress": -1, "LP": {"LP_Lena": 0, "LP_Alisa": 0, "LP_Miku": 0, "LP_Slavya": 0, "LP_Ulyana": 0}}

@@ -584,13 +584,19 @@ class GameManager:
             with open(f'Saves/{page}/{cell}/data.txt', 'r', encoding='utf-8') as f:
                 load_data = json.load(f)
             level_data = int(load_data['level'])
+            self.LP = load_data["LP"]
         else:
+            try:
+                x = self.LP
+            except AttributeError:
+                self.LP = {"LP_Lena": 0, "LP_Alisa": 0, "LP_Miku": 0, "LP_Slavya": 0, "LP_Ulyana": 0}
             map_path = f'Levels/level{level_data}'
 
         story_lines = \
             open(rf'Data/Levels/data_level{level_data}', 'r', encoding='utf-8').readlines()
         queue = list(map(int, story_lines[1].strip().split()))
 
+        self.boss_achievement_condition = False
         self.cur_dialog_in_progress = -1
         self.draw_hit_effect = False
         self.camera = Camera()
@@ -646,7 +652,6 @@ class GameManager:
         return levels[level]()
 
     def play_level_1(self):
-        global LP
         audio.play_music('Level1_theme.mp3')
 
         without_enemies_and_books_group = pygame.sprite.Group()
@@ -678,11 +683,6 @@ class GameManager:
                 elif self.dialog_number <= 2:
                     self.cur_dialog = self.dialogs_text[self.dialog_number]
                     self.dialog_number += 1
-                if self.dialog_number == 2:
-                    try:
-                        make_choice(['Хей', 'FyMoonchika', 'Приглашаю на танец'])
-                    except ExitToMenuException:
-                        running_game = False
 
             if self.dialog_number <= 2 or not enemy_group.sprites():
                 self.hero.projectile_current_time = 100
@@ -697,11 +697,6 @@ class GameManager:
                         running_game = False
 
                 UIManager.process_events(event_game)
-
-            if self.dialog_number == 3:
-                audio.change_sound(3, HitSound)
-            else:
-                audio.change_sound(3, '')
 
             UIManager.update(game_time_delta)
             all_sprites.update()
@@ -737,8 +732,6 @@ class GameManager:
             if self.cur_dialog:
                 try:
                     show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
-                    if self.cur_dialog_in_progress != -1:
-                        self.dialog_number += 1
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -749,11 +742,10 @@ class GameManager:
                                 f"HP: {self.hero.health}"])
                 pygame.display.flip()
 
-        LP['LP_Lena'] += 9
+        self.LP['LP_Lena'] += 9
         return 1, "not passed"
 
     def play_level_2(self):
-        global LP
         audio.play_music('A Promise From Distant Days.mp3')
         Lena_achievement = False
         Lena = None
@@ -776,8 +768,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 1, "restart"
-                return 1, "death"
+                    return 2, "restart"
+                return 2, "death"
 
             if pygame.sprite.collide_mask(Lena, self.hero) and self.dialog_number == 2 and not \
                     self.cur_dialog and self.hero.state and not Lena_achievement:
@@ -787,7 +779,7 @@ class GameManager:
                                    ['Семен', 'Что случилось?', 'Semen'],
                                    ['Лена', 'А, ой, это же мой уровень', 'Lena'],
                                    ['Семен', 'Что? Какой уровень?', 'Semen']]
-                LP['LP_Lena'] += 1
+                self.LP['LP_Lena'] += 1
                 Lena_achievement = True
                 give_achievement('2')
 
@@ -844,8 +836,6 @@ class GameManager:
             if self.cur_dialog:
                 try:
                     show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
-                    if self.cur_dialog_in_progress != -1:
-                        self.dialog_number += 1
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -854,10 +844,9 @@ class GameManager:
             if Lena_achievement:
                 Lena.kill()
 
-        return 1, "not passed"
+        return 2, "not passed"
 
     def play_level_3(self):
-        global LP
         draw_sprites = all_sprites.copy()
         Pioneer, Slavya = None, None
         text = [""]
@@ -881,11 +870,6 @@ class GameManager:
         first_card = False
 
         audio.play_music('I Want To Play.mp3')
-        self.camera.dx = -12000
-        for sprite in all_sprites:
-            self.camera.apply(sprite)
-        for sprite in invisible_bound:
-            self.camera.apply(sprite)
 
         running_game = True
 
@@ -895,8 +879,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 1, "restart"
-                return 1, "death"
+                    return 3, "restart"
+                return 3, "death"
 
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
@@ -924,7 +908,7 @@ class GameManager:
 
             if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
                     len(self.queue_dialogs) == self.dialog_number:
-                return 2, "passed"
+                return 3, "passed"
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
                                                       event_game.key ==
@@ -961,6 +945,13 @@ class GameManager:
             # Движение BackGround`а (бесконечный фон)
             move_background(self.bg_first, self.bg_second)
 
+            self.camera.update(self.hero)
+            # обновляем положение всех спрайтов
+            for sprite in all_sprites:
+                self.camera.apply(sprite)
+            for sprite in invisible_bound:
+                self.camera.apply(sprite)
+
             screen.fill((0, 0, 0))
 
             draw_sprites.draw(screen)
@@ -984,17 +975,15 @@ class GameManager:
 
             if self.cur_dialog:
                 try:
-                    if self.cur_dialog_in_progress != -1:
-                        self.dialog_number += 1
                     show_dialog(self.cur_dialog, start_from=self.cur_dialog_in_progress)
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
                 self.cur_dialog_in_progress = -1
 
-        LP['LP_Slavya'] += self.hero.counter_books * 2
+        self.LP['LP_Slavya'] += self.hero.counter_books * 2
 
-        return 1, "not passed"
+        return 3, "not passed"
 
     def play_level_7(self):
         audio.play_music('boss_phase1_theme.mp3')
@@ -1102,6 +1091,7 @@ class GameManager:
                         rain_count = 20
                     elif self.dialog_number == 3:
                         audio.make_sound(8)
+                        self.boss_achievement_condition = self.hero.health == 100
                         return 7, "passed"
 
                 except ExitToMenuException:
@@ -1175,14 +1165,14 @@ class GameManager:
                 if phase == 4:
                     lb, rb = rb, lb
                 boss.kill()
-                Boss(DICTIONARY_SPRITES['Pioneer'],
+                Boss(DICTIONARY_SPRITES['Pioneer']['static'],
                      lb.pos_x - (self.hero.absolute_x - self.hero.rect.x) // TILE_WIDTH,
                      lb.rect.y // TILE_HEIGHT + 1, 'Pioneer',
                      all_sprites, boss_group, hp=70 - 20 * (phase == 4))
                 boss = boss_group.sprites()[0]
                 Book(random.choice(DICTIONARY_SPRITES['Books']),
                      rb.pos_x - 1 - (self.hero.absolute_x - self.hero.rect.x) // TILE_WIDTH,
-                     rb.rect.y // TILE_HEIGHT, book_group, all_sprites)
+                     rb.rect.y // TILE_HEIGHT, 0, book_group, all_sprites)
                 shield_activated = True
                 self.hero.all_books += 1
                 phase += 1
@@ -1199,9 +1189,9 @@ class GameManager:
                         boss.kill()
                         show_image_smoothly(DICTIONARY_SPRITES['Level_8_intro'],
                                             screen.copy(), DICTIONARY_SPRITES['EmptyMenu'])
-                        if self.hero.health == 100:
+                        if self.hero.health == 100 and self.boss_achievement_condition:
                             give_achievement('3')
-                        return 7, "passed"
+                        return 8, "passed"
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
@@ -1304,8 +1294,8 @@ def make_choice(choices):
     return chosen
 
 
-def draw_hit_effect_core():
-    audio.make_sound(3)
+def draw_hit_effect_core(make_sound):
+    make_sound and audio.make_sound(3)
     hit_effect = pygame_gui.elements.UIImage(
         manager=UIManager,
         image_surface=DICTIONARY_SPRITES['HitEffect'],
@@ -1316,8 +1306,8 @@ def draw_hit_effect_core():
     hit_effect.kill()
 
 
-def draw_hit_effect():
-    th = Thread(target=draw_hit_effect_core)
+def draw_hit_effect(make_sound=True):
+    th = Thread(target=draw_hit_effect_core, args=(make_sound,))
     th.start()
 
 
@@ -1401,7 +1391,7 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'S':
                 WHero(DICTIONARY_SPRITES['Slavya']['static'], x, y, 'Slavya', whero_group, all_sprites)
             if level[y][x] == 'B':
-                Boss(DICTIONARY_SPRITES['Pioneer'], x, y, 'Pioneer', all_sprites, boss_group)
+                Boss(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', all_sprites, boss_group)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -2081,7 +2071,8 @@ def save_game(page, cell, preview, overwrite=False):
                      "all_books": game.hero.all_books,
                      "collected_books": game.hero.counter_books,
                      "cur_dialog": game.cur_dialog,
-                     "cur_dialog_in_progress": game.cur_dialog_in_progress}
+                     "cur_dialog_in_progress": game.cur_dialog_in_progress,
+                     "LP": game.LP}
         json.dump(save_data, f)
 
     # Сохраним карту уровня (расстановку врагом, книг, главного героя и т.д.)
@@ -2494,9 +2485,6 @@ if __name__ == '__main__':
     with open('Data/settings.json', 'r', encoding='utf-8') as f:
         settings = json.load(f)
 
-    with open('Data/data.json', 'r', encoding='utf-8') as f:
-        LP = json.load(f)["LP"]
-
     SIZE = WIDTH, HEIGHT = 800, 600
     FPS = 60
 
@@ -2526,7 +2514,6 @@ if __name__ == '__main__':
     RestartLevelEvent = pygame.event.custom_type()
     MAX_LEVEL = 8
     CUR_LEVEL = 1
-    HitSound = audio.get_sound(3)
 
     game = GameManager()
 
@@ -2640,6 +2627,10 @@ if __name__ == '__main__':
                         boss_projectile_group = pygame.sprite.Group()
                         particles_group = pygame.sprite.Group()
 
+                        # Заглушка
+                        if CUR_LEVEL == 4:
+                            CUR_LEVEL = 7
+
                         if LoadData is not None:
                             LoadDataBackup = LoadData
                             Verdict = game.level_init(LoadData, load_from_save=True)
@@ -2690,8 +2681,5 @@ if __name__ == '__main__':
             show_image_smoothly(start_screen_transition, bg_end=screen.copy(), mode=1)
             start_screen_transition = None
         pygame.display.flip()
-
-    with open('Data/data.json', 'w', encoding='utf-8') as f:
-        json.dump({"LP": LP}, f)
 
     terminate()
