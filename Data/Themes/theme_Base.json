@@ -143,5 +143,95 @@
        "shape": "rounded_rectangle",
        "shape_corner_radius": "23"
      }
+   },
+   "#choice_btn": {
+     "colours": {
+       "normal_bg": "#00000000",
+       "normal_border": "#00000000",
+       "normal_text": "#3f7d00",
+       "hovered_bg": "#00000000",
+       "hovered_border": "#00000000",
+       "hovered_text": "#bcffc0",
+       "active_bg": "#00000000",
+       "active_border": "#00000000",
+       "active_text": "#e3ffe5"
+     },
+     "font": {
+       "size": "45",
+       "name": "choicer",
+       "regular_path": "Data\\Fonts\\choice_font.otf"
+     }
+   },
+   "settings_icon": {
+     "images": {
+       "normal_image": {
+         "path": "Data\\Background\\settings_icon.png"
+       },
+       "hovered_image": {
+         "path": "Data\\Background\\settings_icon_selected.png"
+       },
+       "selected_image": {
+         "path": "Data\\Background\\settings_icon_pressed.png"
+       }
+     }
+   },
+   "slider":
+     {
+         "colours":
+         {
+           "normal_bg": "#FF00FF"
+         },
+         "misc":
+         {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "10",
+            "enable_arrow_buttons": "0"
+         }
+     },
+     "slider.#sliding_button":
+     {
+       "prototype": "#colours_prototype",
+       "misc":
+         {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "9"
+         }
+     },
+   "#settings": {
+     "colours": {
+       "dark_bg":"#00000000",
+       "normal_border": "#00000000"
+     },
+     "images": {
+       "background_image": {
+         "path": "Data\\Background\\settings_bg.png"
+       }
+     }
+   },
+   "settings_button": {
+     "font":
+       {
+           "name": "standart",
+           "size": "25",
+           "regular_path": "Data\\Fonts\\Normal.ttf"
+       },
+     "colours": {
+       "normal_bg": "#00000000",
+       "normal_border": "#000000",
+       "normal_text": "#3f7d00",
+       "hovered_bg": "#00000000",
+       "hovered_border": "#000000",
+       "hovered_text": "#50bd35",
+       "active_bg": "#00000000",
+       "active_border": "#000000",
+       "active_text": "#6bf249"
+     }
+   },
+   "settings_text": {
+     "font": {
+       "name": "standart",
+       "size": "20",
+       "regular_path": "Data\\Fonts\\Normal.ttf"
+     }
    }
  }

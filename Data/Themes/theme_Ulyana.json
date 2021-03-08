@@ -16,5 +16,13 @@
       "name": "bolder",
       "regular_path": "Data\\Fonts\\Third_font.ttf"
     }
+  },
+  "#colours_prototype": {
+    "colours":
+         {
+           "normal_bg": "#ffffff",
+           "hovered_bg": "#ff7b01",
+           "active_bg": "#ffb084"
+         }
   }
 }

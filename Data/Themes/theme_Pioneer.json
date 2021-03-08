@@ -35,5 +35,13 @@
   },
   "#message_window.#dismiss_button": {
     "prototype": "#bus_to_hell_prototype"
+  },
+  "#colours_prototype": {
+    "colours":
+         {
+           "normal_bg": "#ffffff",
+           "hovered_bg": "#CD0000",
+           "active_bg": "#ff6b6d"
+         }
   }
 }
