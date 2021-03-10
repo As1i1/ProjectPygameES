@@ -7,7 +7,6 @@ import shutil
 import random
 import datetime
 import json
-from threading import Thread
 import cv2
 from functools import total_ordering
 from threading import Thread
@@ -868,6 +867,7 @@ class GameManager:
 
         end_tasks = False
         first_card = False
+        done = False
 
         audio.play_music('I Want To Play.mp3')
 
@@ -905,6 +905,12 @@ class GameManager:
                     draw_sprites.remove(Slavya)
                 if self.dialog_number == 9:
                     draw_sprites.remove(Pioneer)
+
+            if self.dialog_number >= 2 and Pioneer in draw_sprites and not done:
+                draw_sprites.remove(Pioneer)
+                Pioneer.change_pos(False, -115 * 50, -100)
+                Pioneer.fall()
+                done = True
 
             if self.hero.absolute_x <= self.exit_pos <= self.hero.absolute_x + self.hero.rect.w and \
                     len(self.queue_dialogs) == self.dialog_number:
