@@ -399,12 +399,12 @@ class WHero(pygame.sprite.Sprite):
 
     def change_pos(self, is_in_camera, x, y):
         """Добавляет к координате x, y,
-        Параметр camera показывает должен ли персонаж в это время находится в кадре"""
+        Параметр is_in_camera показывает должен ли персонаж в это время находится в кадре"""
         self.rect.x += x
         self.rect.y += y
 
     def flip_image(self):
-        """Отрожает изображение"""
+        """Отражает изображение"""
         self.image = pygame.transform.flip(self.image, True, False)
         self.is_flip = not self.is_flip
 
