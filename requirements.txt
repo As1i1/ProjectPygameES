@@ -1,0 +1,4 @@
+opencv-python==4.5.1.48
+pygame==2.0.0
+pygame-gui==0.5.7
+pygamegui==0.1.2

@@ -7,7 +7,6 @@ import shutil
 import random
 import datetime
 import json
-from threading import Thread
 import cv2
 from functools import total_ordering
 from threading import Thread
@@ -642,8 +641,8 @@ class GameManager:
             return self.start_level(level_data, preinited=True)
 
     def start_level(self, level, preinited=False):
-        levels = {1: self.play_level_1, 2: self.play_level_2, 7: self.play_level_7,
-                  3: self.play_level_3, 8: self.play_level_8}
+        levels = {1: self.play_level_1, 2: self.play_level_2, 4: self.play_level_4,
+                  3: self.play_level_3, 5: self.play_level_5}
         if not preinited:
             show_image_smoothly(DICTIONARY_SPRITES.get(f'Level_{level}_intro',
                                                        pygame.Surface((800, 600))), screen.copy(),
@@ -985,7 +984,7 @@ class GameManager:
 
         return 3, "not passed"
 
-    def play_level_7(self):
+    def play_level_4(self):
         audio.play_music('boss_phase1_theme.mp3')
 
         check_alive = False
@@ -1017,8 +1016,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 7, "restart"
-                return 7, "death"
+                    return 4, "restart"
+                return 4, "death"
 
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
@@ -1092,15 +1091,15 @@ class GameManager:
                     elif self.dialog_number == 3:
                         audio.make_sound(8)
                         self.boss_achievement_condition = self.hero.health == 100
-                        return 7, "passed"
+                        return 4, "passed"
 
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
 
-        return 7, "not passed"
+        return 4, "not passed"
 
-    def play_level_8(self):
+    def play_level_5(self):
         audio.play_music('boss_phase2_theme.mp3')
 
         left_book, right_book = book_group.sprites()
@@ -1115,8 +1114,8 @@ class GameManager:
             if self.hero.health <= 0:
                 restart = show_death_screen()
                 if restart:
-                    return 8, "restart"
-                return 8, "death"
+                    return 5, "restart"
+                return 5, "death"
 
             for event_game in pygame.event.get():
                 if event_game.type == pygame.QUIT or (event_game.type == pygame.KEYDOWN and
@@ -1191,12 +1190,12 @@ class GameManager:
                                             screen.copy(), DICTIONARY_SPRITES['EmptyMenu'])
                         if self.hero.health == 100 and self.boss_achievement_condition:
                             give_achievement('3')
-                        return 8, "passed"
+                        return 5, "passed"
                 except ExitToMenuException:
                     running_game = False
                 self.cur_dialog = []
 
-        return 8, "not passed"
+        return 5, "not passed"
 
 
 def show_image_smoothly(image, bg_start=None, bg_end=None, mode=0):
@@ -1441,10 +1440,6 @@ def confirm_exit():
 
 def show_credits_and_exit():
     """Показ титров с последующим выходом из игры"""
-
-
-def end_screen():
-    pass
 
 
 def move_background(bg_first, bg_second):
@@ -1829,10 +1824,6 @@ def show_achievements_storage():
         pygame.display.flip()
 
     return
-
-
-def show_clock():
-    pass
 
 
 def check_saves(page):
@@ -2410,8 +2401,8 @@ if __name__ == '__main__':
                           'Background1': load_image(r'Background\city_background_sunset.png'),
                           'Background2': load_image(r'Background\city_background_3.png'),
                           'Background3': load_image(r'Background\city_background_day.png'),
-                          'Background7': load_image(r'Background\city_background_night.png'),
-                          'Background8': load_image(r'Background\city_background_night.png'),
+                          'Background4': load_image(r'Background\city_background_night.png'),
+                          'Background5': load_image(r'Background\city_background_night.png'),
                           'Bound': load_image(r'Background\Constructions\asphalt.png'),
                           'InvisibleBound': load_image(r'Background\Constructions\empty.png'),
                           'Projectile': load_image(r'Background\Constructions\bag.png'),
@@ -2426,8 +2417,9 @@ if __name__ == '__main__':
                           'Settings_bg': load_image(rf'Background\Menu_dark.jpg'),
                           'Level_1_intro': load_image(r'Background\First_level_intro.png'),
                           'Level_2_intro': load_image(r'Background\Second_level_intro.png'),
+                          'Level_4_intro': load_image(r'Background\Fourth_level_intro.jpg'),
                           'Level_3_intro': load_image(r'Background\Third_level_intro.png'),
-                          'Level_8_intro': load_image(r'Background\flash.png'),
+                          'Level_5_intro': load_image(r'Background\flash.png'),
                           'EmptyMenu': load_image(r'Background\Menu_empty.jpg'),
                           'magic_shield': load_image(r'Background\shield.png'),
                           'boss_hp_100': load_image(r'Background\hp100.png'),
@@ -2512,7 +2504,7 @@ if __name__ == '__main__':
     FlagGoNextLevel = False
     LoadData = None
     RestartLevelEvent = pygame.event.custom_type()
-    MAX_LEVEL = 8
+    MAX_LEVEL = 5
     CUR_LEVEL = 1
 
     game = GameManager()
@@ -2627,9 +2619,6 @@ if __name__ == '__main__':
                         boss_projectile_group = pygame.sprite.Group()
                         particles_group = pygame.sprite.Group()
 
-                        # Заглушка
-                        if CUR_LEVEL == 4:
-                            CUR_LEVEL = 7
 
                         if LoadData is not None:
                             LoadDataBackup = LoadData
