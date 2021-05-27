@@ -600,9 +600,11 @@ class GameManager:
         self.draw_hit_effect = False
         self.camera = Camera()
         self.bg_first = \
-            BackGround(-4000, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites, background_group)
+            BackGround(-4000, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites,
+                       background_group)
         self.bg_second = \
-            BackGround(0, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites, background_group)
+            BackGround(0, DICTIONARY_SPRITES[f'Background{level_data}'], all_sprites,
+                       background_group)
         self.hero, self.hero_pos_x, self.hero_pos_y, self.coord_checkpoints, self.exit_pos = \
             generate_level(load_level(map_path, is_save=load_from_save), (all_sprites, hero_group),
                            (bound_group, all_sprites))
@@ -884,8 +886,9 @@ class GameManager:
 
             if self.dialog_number < len(self.dialogs_text) and self.hero.state and \
                     self.hero.absolute_x <= self.queue_dialogs[self.dialog_number] <= \
-                    self.hero.absolute_x + self.hero.rect.w and ((self.dialog_number == 2 and end_tasks) or
-                                                                 self.dialog_number != 2):
+                    self.hero.absolute_x + self.hero.rect.w and (
+                    (self.dialog_number == 2 and end_tasks) or
+                    self.dialog_number != 2):
                 self.cur_dialog = self.dialogs_text[self.dialog_number]
                 self.dialog_number += 1
                 text = [""]
@@ -924,7 +927,8 @@ class GameManager:
                     except ExitToMenuException:
                         running_game = False
 
-                if (event_game.type == pygame.KEYDOWN and event_game.key == settings['skip_quest'] and self.dialog_number == 2) or \
+                if (event_game.type == pygame.KEYDOWN and event_game.key == settings[
+                    'skip_quest'] and self.dialog_number == 2) or \
                         self.hero.counter_books == 5:
                     end_tasks = True
 
@@ -932,7 +936,8 @@ class GameManager:
                 all_sprites.update()
 
             if self.dialog_number == 2 and not end_tasks:
-                text = [f"Собрать документы:{self.hero.counter_books}/5", f"HP:{self.hero.health}/100"]
+                text = [f"Собрать документы:{self.hero.counter_books}/5",
+                        f"HP:{self.hero.health}/100"]
 
             if self.dialog_number == 2 and self.hero.counter_books == 5:
                 end_tasks = True
@@ -1377,7 +1382,8 @@ def generate_level(level, hero_groups, asphalt_groups):
                 pos_x, pos_y = x, y
             if level[y][x] == 'b':
                 cnt_books += 1
-                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, cnt_books, all_sprites, book_group)
+                Book(random.choice(DICTIONARY_SPRITES['Books']), x, y, cnt_books, all_sprites,
+                     book_group)
             if level[y][x] == "E":
                 Enemy(DICTIONARY_SPRITES['Enemy'], 4, 1, x, y,
                       enemy_group, all_sprites)
@@ -1393,11 +1399,14 @@ def generate_level(level, hero_groups, asphalt_groups):
             if level[y][x] == 'L':
                 WHero(DICTIONARY_SPRITES['Lena']['static'], x, y, 'Lena', whero_group, all_sprites)
             if level[y][x] == 'P':
-                WHero(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', whero_group,
+                      all_sprites)
             if level[y][x] == 'S':
-                WHero(DICTIONARY_SPRITES['Slavya']['static'], x, y, 'Slavya', whero_group, all_sprites)
+                WHero(DICTIONARY_SPRITES['Slavya']['static'], x, y, 'Slavya', whero_group,
+                      all_sprites)
             if level[y][x] == 'B':
-                Boss(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', all_sprites, boss_group)
+                Boss(DICTIONARY_SPRITES['Pioneer']['static'], x, y, 'Pioneer', all_sprites,
+                     boss_group)
     hero.all_books = cnt_books
     return hero, pos_x, pos_y, coord_checkpoints, exit_pos
 
@@ -1742,7 +1751,8 @@ def show_dialog(data, start_from=-1, queue=None):
                 data[cur_phrase] = data[cur_phrase][queue[number_queue]]
                 number_queue += 1
         """
-        if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум" or data[cur_phrase][0] == "Разработчики":
+        if data[cur_phrase][0] == "Комм" or data[cur_phrase][0] == "Разум" or data[cur_phrase][
+            0] == "Разработчики":
             text_box.html_text = data[cur_phrase][1]
         else:
             text_box.html_text = f"<font color='{name_colors[data[cur_phrase][2]]}'>" + \
@@ -2441,11 +2451,13 @@ if __name__ == '__main__':
                           'boss_hp_10': load_image(r'Background\hp10.png'),
                           'boss_hp_0': load_image(r'Background\hp0.png'),
                           'Alisa': r'',
-                          'Lena': {'static': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'), 'dynamic': r''},
+                          'Lena': {'static': load_image(r'Sprites\Lena\Lena_spite_state_pos.png'),
+                                   'dynamic': r''},
                           'Miku': {'static': r'', 'dynamic': r''},
                           'Ulyana': {'static': r'', 'dynamic': r''},
-                          'Slavya': {'static': load_image(r'Sprites\Slavya\Sidewalk\slavay_state_pos.png'),
-                                     'dynamic': load_image(r'Sprites\Slavya\Sidewalk\slavay2.png')},
+                          'Slavya': {
+                              'static': load_image(r'Sprites\Slavya\Sidewalk\slavay_state_pos.png'),
+                              'dynamic': load_image(r'Sprites\Slavya\Sidewalk\slavay2.png')},
                           'UVAO': {'static': r'', 'dynamic': r''},
                           'Zhenya': {'static': r'', 'dynamic': r''},
                           'OD': {'static': r'', 'dynamic': r''},
